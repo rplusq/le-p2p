@@ -5,8 +5,6 @@ import { configureChains, createConfig } from "wagmi";
 import { jsonRpcProvider } from "wagmi/providers/jsonRpc";
 import { EthereumClient, w3mConnectors, w3mProvider } from "@web3modal/ethereum";
 
-console.log(process.env);
-
 const WEB3_MODAL_PROJECT_ID = process.env.NEXT_PUBLIC_WEB3_MODAL_PROJECT_ID ?? "";
 const chains = [polygon];
 

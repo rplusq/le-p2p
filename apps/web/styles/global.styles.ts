@@ -41,4 +41,8 @@ export const GlobalStyle = createGlobalStyle`
         height: 100%;
         top: 0;
     }
+
+    h2 {
+        font-size: 32px;
+    }
 `;
