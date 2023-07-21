@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./helpers/ByteHasher.sol";
-import "./interfaces/IWorldID.sol";
+import "./interfaces/IWorldId.sol";
 
 contract LeP2PEscrow is AccessControl {
     using ByteHasher for bytes;
@@ -28,7 +28,7 @@ contract LeP2PEscrow is AccessControl {
     mapping(uint256 => Order) public orders;
     
     bytes32 public constant ARBITRATOR_ROLE = keccak256("ARBITRATOR_ROLE");
-    uint256 public nextOrderId = 0;
+    uint256 public nextOrderId = 1;
     IERC20 public token;
 
     /// @dev The World ID instance that will be used for verifying proofs
@@ -57,12 +57,27 @@ contract LeP2PEscrow is AccessControl {
         token = token_;
         _setupRole(ARBITRATOR_ROLE, msg.sender);
 	}
-    
+
+    /**
+    * @dev Creates an order to be published in the File Node
+    * @param amount Amount of tokens to be sold
+    * @param fiatToTokenExchangeRate Fiat to token exchange rate
+    * @param iban IBAN of the seller
+    */
     function createOrder(uint256 amount, uint256 fiatToTokenExchangeRate, string memory iban) onlyRegistered external {
+        // Check that the amount to be sold is greater than 0
         require(amount > 0, "Amount must be greater than 0");
+        
+        // Check that the exchange rate is greater than 0
         require(fiatToTokenExchangeRate > 0, "Exchange rate must be greater than 0");
+        
+        // Check that the IBAN is not empty
         require(bytes(iban).length > 0, "IBAN must not be empty");
+        
+        // Transfer tokens to this contract to hold them
         token.transferFrom(msg.sender, address(this), amount);
+        
+        // Create order to be published
         orders[nextOrderId] = Order({
             seller: msg.sender,
             amount: amount,
@@ -72,33 +87,28 @@ contract LeP2PEscrow is AccessControl {
             paymentProof: ""
         });
         
+        // Emit event to be saved in the File Node
         emit OrderCreated(nextOrderId, msg.sender, amount, fiatToTokenExchangeRate, iban);
         nextOrderId++;
     }
     
-    function cancelOrder(uint256 id, string memory reason) onlyRegistered external {
-        Order storage order = orders[id];
-        require(order.seller != address(0), "Order does not exist");
-        require(msg.sender == order.seller, "Not the seller");
-        require(order.buyer == address(0), "Order has a buyer");
-
-        delete orders[id];
-
-        emit OrderCancelled(id, reason);
-
-        token.transfer(order.seller, order.amount);
-    }
-    
-    function submitPayment(uint256 id, string memory ipfsHash) onlyRegistered external {
+    function reserveOrder(uint256 id) onlyRegistered external {
         Order storage order = orders[id];
         require(order.seller != address(0), "Order does not exist");
         require(order.buyer == address(0), "Order already has a buyer");
 
         order.buyer = msg.sender;
+    }
+    
+    function submitPayment(uint256 id, string memory ipfsHash) onlyRegistered external {
+        Order storage order = orders[id];
+        require(order.seller != address(0), "Order does not exist");
+        require(msg.sender == order.buyer, "Not the buyer");
+
         order.paymentProof = ipfsHash;
     }
     
-    function confirmOrder(uint256 id) external onlyRegistered {
+    function confirmOrder(uint256 id) onlyRegistered external {
         Order storage order = orders[id];
         require(msg.sender == order.seller, "Not the seller");
         require(order.buyer != address(0), "Order has no buyer");
@@ -116,6 +126,63 @@ contract LeP2PEscrow is AccessControl {
         token.transfer(order.buyer, order.amount);
 
         emit OrderCompleted(id, order.buyer, order.paymentProof);
+    }
+
+    function cancelOrderUser(uint256 id, string memory reason) onlyRegistered external {
+        // Retrieve the order to be cancelled
+        Order storage order = orders[id];
+
+        bool isSeller = msg.sender == order.seller;
+        bool isBuyer = msg.sender == order.buyer;
+        bool isOrderOnBuyerSide = order.buyer != address(0);
+        bool isOrderOnSellerSide = order.buyer == address(0);
+        bool isOrderExistant = order.seller != address(0);
+
+        // Check that the order exists
+        require(isOrderExistant, "Order does not exist");
+
+        // Check that the sender is the seller when the order has no buyer
+        if (isOrderOnSellerSide) {
+            require(isSeller, "Not the seller");
+        }
+        // Check that the sender is the seller when the order has a buyer
+        else if(isOrderOnBuyerSide) {
+            require(isBuyer, "Not the buyer");
+        }
+
+        _cancelOrder(id, reason);
+    }
+
+    function cancelOrderArbitrator(uint256 id, string memory reason) onlyRegistered external {
+        // Retrieve the order to be cancelled
+        Order storage order = orders[id];
+
+        bool isArbitrator = hasRole(ARBITRATOR_ROLE, msg.sender);
+        bool isOrderExistant = order.seller != address(0);
+
+        // Check that the order exists
+        require(isOrderExistant, "Order does not exist");
+
+        // Check that the sender is the arbitrator
+        require(isArbitrator, "Not the seller");
+
+
+        _cancelOrder(id, reason);
+    }
+
+    function _cancelOrder(uint256 id, string memory reason) private {
+        Order storage order = orders[id];
+        address seller = order.seller;
+        uint256 amount = order.amount;
+
+         // Delete the order
+        delete orders[id];
+
+        // Emit event of order cancellation to be saved in the File Node
+        emit OrderCancelled(id, reason);
+
+        // Transfer tokens back to the seller
+        token.transfer(seller, amount);
     }
 
     /// @param signal An arbitrary input from the user, usually the user's wallet address (check README for further details)
