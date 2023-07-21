@@ -4,8 +4,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract LeP2PEscrow is AccessControl {
-    bytes32 public constant ARBITRATOR_ROLE = "<<ARBITRATOR_ROLE>>";
-    IERC20 public usdc;
+    bytes32 public constant ARBITRATOR_ROLE = keccak256("ARBITRATOR_ROLE");
+    IERC20 public token;
     
     struct Order {
         address seller;
@@ -14,8 +14,6 @@ contract LeP2PEscrow is AccessControl {
         string iban;
         address buyer;
         string paymentProof;
-        bool isComplete;
-        string cancelReason;
     }
     
     mapping(uint256 => Order) public orders;
@@ -26,21 +24,22 @@ contract LeP2PEscrow is AccessControl {
     event OrderCompleted(uint256 id, address buyer, string paymentProof);
     
     constructor(IERC20 _usdc) {
-        usdc = _usdc;
+        token = _usdc;
         _setupRole(ARBITRATOR_ROLE, msg.sender);
     }
     
     function createOrder(uint256 amount, uint256 fiatToTokenExchangeRate, string memory iban) external {
-        usdc.transferFrom(msg.sender, address(this), amount);
+        require(amount > 0, "Amount must be greater than 0");
+        require(fiatToTokenExchangeRate > 0, "Exchange rate must be greater than 0");
+        require(bytes(iban).length > 0, "IBAN must not be empty");
+        token.transferFrom(msg.sender, address(this), amount);
         orders[nextOrderId] = Order({
             seller: msg.sender,
             amount: amount,
             fiatToTokenExchangeRate: fiatToTokenExchangeRate,
             iban: iban,
             buyer: address(0),
-            paymentProof: "",
-            isComplete: false,
-            cancelReason: ""
+            paymentProof: ""
         });
         
         emit OrderCreated(nextOrderId, msg.sender, amount, fiatToTokenExchangeRate, iban);
@@ -49,21 +48,21 @@ contract LeP2PEscrow is AccessControl {
     
     function cancelOrder(uint256 id, string memory reason) external {
         Order storage order = orders[id];
+        require(order.seller != address(0), "Order does not exist");
         require(msg.sender == order.seller, "Not the seller");
         require(order.buyer == address(0), "Order has a buyer");
-        require(!order.isComplete, "Order is complete");
 
-        order.cancelReason = reason;
-        usdc.transfer(order.seller, order.amount);
+        delete orders[id];
 
         emit OrderCancelled(id, reason);
+
+        token.transfer(order.seller, order.amount);
     }
     
     function submitPayment(uint256 id, string memory ipfsHash) external {
         Order storage order = orders[id];
         require(order.seller != address(0), "Order does not exist");
         require(order.buyer == address(0), "Order already has a buyer");
-        require(!order.isComplete, "Order is complete");
 
         order.buyer = msg.sender;
         order.paymentProof = ipfsHash;
@@ -73,22 +72,18 @@ contract LeP2PEscrow is AccessControl {
         Order storage order = orders[id];
         require(msg.sender == order.seller, "Not the seller");
         require(order.buyer != address(0), "Order has no buyer");
-        require(!order.isComplete, "Order is already complete");
-
-        order.isComplete = true;
-        usdc.transfer(order.buyer, order.amount);
 
         emit OrderCompleted(id, order.buyer, order.paymentProof);
+
+        token.transfer(order.buyer, order.amount);
     }
     
     function arbitrateCompleteOrder(uint256 id) external {
         require(hasRole(ARBITRATOR_ROLE, msg.sender), "Not an arbitrator");
 
         Order storage order = orders[id];
-        require(!order.isComplete, "Order is already complete");
 
-        order.isComplete = true;
-        usdc.transfer(order.buyer, order.amount);
+        token.transfer(order.buyer, order.amount);
 
         emit OrderCompleted(id, order.buyer, order.paymentProof);
     }
