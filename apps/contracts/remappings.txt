@@ -1,2 +1,4 @@
 @openzeppelin/=lib/openzeppelin-contracts/
 forge-std/=lib/forge-std/src
+@iden3/=lib/contracts
+solidity-bytes-utils/=lib/solidity-bytes-utils
