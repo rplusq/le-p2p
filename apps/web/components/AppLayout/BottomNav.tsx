@@ -17,9 +17,9 @@ export default function BottomNav() {
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           className="feather feather-arrow-down-left">
           <line x1="17" y1="7" x2="7" y2="17"></line>
           <polyline points="17 17 7 17 7 7"></polyline>
@@ -34,9 +34,9 @@ export default function BottomNav() {
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round">
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
         </svg>
         <p>Activity</p>
@@ -49,9 +49,9 @@ export default function BottomNav() {
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           className="feather feather-arrow-up-right">
           <line x1="7" y1="17" x2="17" y2="7"></line>
           <polyline points="7 7 17 7 17 17"></polyline>

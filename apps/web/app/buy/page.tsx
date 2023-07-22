@@ -5,11 +5,12 @@ import { useEffect } from "react";
 import { useAccount } from "wagmi";
 import { StyledBuy } from "./styles";
 import OfferCard from "@/components/OfferCard/OfferCard";
+import { useSellOffers } from "./service";
 
 export default function Buy() {
   const router = useRouter();
   const { address } = useAccount();
-  console.log(address);
+  const { data: sellOffers, isLoading } = useSellOffers();
 
   useEffect(() => {
     if (!address) router.push("/");
@@ -20,14 +21,9 @@ export default function Buy() {
       <h2 className="text-4xl font-bold tracking-tight">Buy USDC</h2>
 
       <div className="offers">
-        <OfferCard />
-        <OfferCard />
-        <OfferCard />
-        <OfferCard />
-        <OfferCard />
-        <OfferCard />
-        <OfferCard />
-        <OfferCard />
+        {sellOffers?.map((sellOffer) => (
+          <OfferCard key={sellOffer.id} offer={sellOffer} />
+        ))}
       </div>
     </StyledBuy>
   );
