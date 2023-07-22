@@ -1,5 +1,6 @@
 "use client";
 
+import "./globals.css";
 import { WagmiConfig } from "wagmi";
 import StyledComponentsRegistry from "@/lib/styled-components/sc-registry";
 import { GlobalStyle } from "@/styles/global.styles";

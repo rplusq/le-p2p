@@ -8,7 +8,7 @@ export const StyledMainApp = styled.div`
   align-items: center;
 
   .mobile-container {
-    background-color: var(--background-2);
+    background-color: white;
     border: 2px solid var(--gray-border);
     width: 450px;
     height: 80vh;

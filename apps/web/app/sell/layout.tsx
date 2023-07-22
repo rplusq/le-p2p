@@ -2,7 +2,7 @@
 
 import AppLayout from "@/components/AppLayout/AppLayout";
 
-export default function SearchLayout({ children }: { children: React.ReactNode }) {
+export default function SellLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppLayout>
       <main>{children}</main>

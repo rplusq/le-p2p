@@ -1,11 +1,8 @@
 "use client";
 
 import { createGlobalStyle } from "styled-components";
-import { variables } from "./variables.styles";
 
 export const GlobalStyle = createGlobalStyle`
-    ${variables}
-    
     *,
     *::before,
     *::after {
@@ -30,7 +27,7 @@ export const GlobalStyle = createGlobalStyle`
     }
     
     body {
-        background-color: var(--background);
+        background-color: #f6f6f6;
         margin: 0;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;

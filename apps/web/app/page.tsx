@@ -12,7 +12,7 @@ export default function Home() {
   const [connectorsReady, setConnectorsReady] = useState(false);
 
   useEffect(() => {
-    if (address) router.push("/search");
+    if (address) router.push("/buy");
   }, [router, address]);
 
   useEffect(() => {
