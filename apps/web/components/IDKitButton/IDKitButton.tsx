@@ -1,10 +1,19 @@
 "use client";
 
 import { IDKitWidget, CredentialType } from "@worldcoin/idkit";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
+import { useWorldCoinRegister } from "./service";
+import { useAccount } from "wagmi";
 
 export const IDKitButton = () => {
-  const handleVerify = (data: any) => {};
+  const { address } = useAccount();
+  const { write } = useWorldCoinRegister();
+
+  const handleVerify = (data: any) => {
+    console.log(data);
+    if (!address) return;
+    write({ args: [address, data.merkle_root, data.nullifier_hash, data.proof] });
+  };
 
   return (
     <IDKitWidget

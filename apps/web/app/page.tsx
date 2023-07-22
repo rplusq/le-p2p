@@ -4,7 +4,7 @@ import { Web3Button } from "@web3modal/react";
 import { useEffect, useState } from "react";
 import { useAccount, useConnect } from "wagmi";
 import { StyledHome } from "./styles";
-import { IDKitButton } from "@/components/IDKitButton";
+import { IDKitButton } from "@/components/IDKitButton/IDKitButton";
 
 export default function Home() {
   const { address } = useAccount();
