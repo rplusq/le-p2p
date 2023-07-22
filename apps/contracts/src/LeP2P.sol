@@ -49,6 +49,8 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     /// @dev Whether an address has a verified kyc id
     mapping(address => uint256) internal _addressToKycId;
 
+    mapping(address => uint256) public userVolume;
+
     /// @dev The request ID for the transfer circuit
     uint64 public constant TRANSFER_REQUEST_ID = 1;
 
@@ -84,10 +86,9 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         // Check that the IBAN is not empty
         require(bytes(iban).length > 0, "IBAN must not be empty");
 
-        _amountCheckKYC(amount);
-        
-        // Transfer tokens to this contract to hold them
-        token.transferFrom(msg.sender, address(this), amount);
+        _volumeCheckKYC();
+
+        nextOrderId++;
         
         // Create order to be published
         orders[nextOrderId] = Order({
@@ -98,18 +99,22 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
             buyer: address(0),
             paymentProof: ""
         });
+
+        userVolume[msg.sender] += amount;
         
         // Emit event to be saved in the File Node
         emit OrderCreated(nextOrderId, msg.sender, amount, fiatToTokenExchangeRate, iban);
-        nextOrderId++;
+
+        // Transfer tokens to this contract to hold them
+        token.transferFrom(msg.sender, address(this), amount);
     }
     
     function reserveOrder(uint256 id) onlyVerifiedHuman external {
         Order storage order = orders[id];
         require(order.seller != address(0), "Order does not exist");
         require(order.buyer == address(0), "Order already has a buyer");
-        _amountCheckKYC(order.amount);
-
+        _volumeCheckKYC();
+        userVolume[msg.sender] += order.amount;
         order.buyer = msg.sender;
     }
     
@@ -229,8 +234,9 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         _;
     }
 
-    function _amountCheckKYC(uint256 amount) view internal {
-        if(amount > 1000e6) {
+    function _volumeCheckKYC() view internal {
+        uint256 msgSenderVolume = userVolume[msg.sender];
+        if(msgSenderVolume > 1000e6) {
             require(_addressToKycId[msg.sender] != 0, "Address needs to be kycd for amounts greater than 1000");
         }
     }
