@@ -49,6 +49,10 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     /// @dev Whether an address has a verified kyc id
     mapping(address => uint256) internal _addressToKycId;
 
+    /// @dev The request ID for the transfer circuit
+    uint64 public constant TRANSFER_REQUEST_ID = 1;
+
+
 	/// @param worldId_ The WorldID instance that will verify the proofs
 	/// @param appId The World ID app ID
 	/// @param actionId The World ID action ID
@@ -80,7 +84,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         // Check that the IBAN is not empty
         require(bytes(iban).length > 0, "IBAN must not be empty");
 
-        amountCheckKYC(amount);
+        _amountCheckKYC(amount);
         
         // Transfer tokens to this contract to hold them
         token.transferFrom(msg.sender, address(this), amount);
@@ -101,10 +105,10 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     }
     
     function reserveOrder(uint256 id) onlyVerifiedHuman external {
-        amountCheckKYC(amount);
         Order storage order = orders[id];
         require(order.seller != address(0), "Order does not exist");
         require(order.buyer == address(0), "Order already has a buyer");
+        _amountCheckKYC(order.amount);
 
         order.buyer = msg.sender;
     }
@@ -225,7 +229,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         _;
     }
 
-    function amountCheckKYC(uint256) view external {
+    function _amountCheckKYC(uint256 amount) view internal {
         if(amount > 1000e6) {
             require(_addressToKycId[msg.sender] != 0, "Address needs to be kycd for amounts greater than 1000");
         }
@@ -254,7 +258,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         ICircuitValidator validator
     ) internal override {
         require(
-            requestId == TRANSFER_REQUEST_ID && addressToId[_msgSender()] == 0,
+            requestId == TRANSFER_REQUEST_ID && _addressToKycId[_msgSender()] == 0,
             "proof can not be submitted more than once"
         );
 
