@@ -39,7 +39,7 @@ const getActiveOrderForUser = async (): Promise<Offer | undefined> => {
     paymentProof: "",
   };
 
-  return sellerWaiting;
+  return buyerAction;
 };
 
 export const useActiveOrder = (): UseQueryResult<Offer | undefined> => {

@@ -4,9 +4,13 @@ import BottomNav from "./BottomNav";
 import AppHeader from "./AppHeader";
 import { StyledAppLayout } from "./styles";
 import { useAccount } from "wagmi";
+import { usePathname } from "next/navigation";
 
-export default function AppLayout({ children, noNav = false }: { children: React.ReactNode; noNav?: boolean }) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { address } = useAccount();
+  const pathname = usePathname();
+
+  const noNav = pathname === "/";
 
   return (
     <StyledAppLayout>

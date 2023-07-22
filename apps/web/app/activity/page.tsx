@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { StyledActivity } from "./styles";
 import OfferCard from "@/components/OfferCard/OfferCard";
@@ -10,15 +10,47 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import CheckIcon from "@mui/icons-material/Check";
 import { useActiveOrder } from "./service";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/Input";
+import { web3StorageClient } from "@/lib/web3storage";
 
 export default function Activity() {
   const router = useRouter();
   const { address } = useAccount();
   const { data: activeOrder } = useActiveOrder();
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const [proofOfPaymentFile, setProofOfPaymentFile] = useState<File | undefined>();
 
   useEffect(() => {
     if (!address) router.push("/");
   }, [router, address]);
+
+  const handleOnChangeProof = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setProofOfPaymentFile(e.target.files?.[0]);
+  };
+
+  const handlePaymentDone = async () => {
+    if (!proofOfPaymentFile) return;
+    setLoading(true);
+
+    try {
+      // TODO:
+      // Upload to IPFS
+      const proofCid = await web3StorageClient.put([proofOfPaymentFile], {});
+      console.log(proofCid);
+      // Call contract
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentReceived = () => {
+    // TODO:
+    // Call contract
+  };
 
   const buyerView = () => {
     if (!activeOrder) return null;
@@ -56,7 +88,7 @@ export default function Activity() {
           <p className="mt-5">
             Please, you need to send{" "}
             <strong>{((activeOrder?.amount ?? 0) / (activeOrder?.fiatToTokenExchangeRate ?? 0)).toFixed(2)}€</strong> to the
-            payment method listed below:
+            payment method listed below and upload the proof of payment:
           </p>
 
           <Card className="mt-3">
@@ -77,9 +109,26 @@ export default function Activity() {
             </CardContent>
           </Card>
 
-          <Button variant="default" className="w-full mt-5">
-            <CheckIcon className="mr-2" />
-            Payment done
+          <div className="grid w-full max-w-sm items-center gap-1.5 mt-4">
+            <Label htmlFor="picture">Proof of payment</Label>
+            <Input id="picture" type="file" onChange={handleOnChangeProof} disabled={loading} />
+          </div>
+
+          <Button variant="default" className="w-full mt-5" disabled={!proofOfPaymentFile || loading} onClick={handlePaymentDone}>
+            {proofOfPaymentFile ? (
+              <>
+                {loading ? (
+                  <>Uploading and executing...</>
+                ) : (
+                  <>
+                    <CheckIcon className="mr-2" />
+                    Payment done
+                  </>
+                )}
+              </>
+            ) : (
+              <>Please, upload proof first</>
+            )}
           </Button>
         </>
       );
@@ -143,7 +192,7 @@ export default function Activity() {
             </CardContent>
           </Card>
 
-          <Button variant="default" className="w-full mt-5">
+          <Button variant="default" className="w-full mt-5" onClick={handlePaymentReceived}>
             <CheckIcon className="mr-2" />
             Payment received
           </Button>

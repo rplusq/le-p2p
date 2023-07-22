@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useWaitForTransaction } from "wagmi";
 import { StyledSell } from "./styles";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -10,7 +10,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/Input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { useSellOffers } from "../buy/service";
+import { leP2PEscrowAddress, useLeP2PEscrowCreateOrder, useUsdcMockAllowance, useUsdcMockApprove } from "@/generated";
+import { parseUnits } from "viem";
+import { TOKEN_DECIMALS } from "@/lib/constans";
+import { polygonMumbai } from "wagmi/chains";
 
 const sellFormSchema = z.object({
   amount: z.string(),
@@ -23,18 +26,61 @@ type SellFormValues = z.infer<typeof sellFormSchema>;
 export default function Sell() {
   const router = useRouter();
   const { address } = useAccount();
-
-  const form = useForm<SellFormValues>({
-    resolver: zodResolver(sellFormSchema),
-  });
+  const { data: tokenAllowance } = useUsdcMockAllowance({ account: address });
 
   useEffect(() => {
     if (!address) router.push("/");
   }, [router, address]);
 
-  function onSubmit(data: SellFormValues) {
-    console.log(data);
-  }
+  const form = useForm<SellFormValues>({
+    resolver: zodResolver(sellFormSchema),
+    defaultValues: {
+      amount: "",
+      fiatToTokenExchangeRate: "",
+      iban: "",
+    },
+  });
+
+  // Contracts
+  const approveCall = useUsdcMockApprove();
+  const waitingApprove = useWaitForTransaction({
+    hash: approveCall.data?.hash as `0x${string}`,
+    onSuccess: () => handleCreateOffer(),
+  });
+
+  const createOfferCall = useLeP2PEscrowCreateOrder();
+  const waitingCreateOffer = useWaitForTransaction({
+    hash: createOfferCall.data?.hash as `0x${string}`,
+    onSuccess: () => router.push("/buy"),
+  });
+
+  const hasAllowance =
+    tokenAllowance && form.watch("amount") ? tokenAllowance > parseUnits(`${+form.watch("amount")}`, TOKEN_DECIMALS) : false;
+
+  const onSubmit = async (data: SellFormValues) => {
+    // Call contract
+    if (!hasAllowance) {
+      approveCall.write({
+        args: [leP2PEscrowAddress[polygonMumbai.id], parseUnits(`${+data.amount}`, TOKEN_DECIMALS)],
+      });
+    } else {
+      handleCreateOffer();
+    }
+  };
+
+  const handleCreateOffer = async () => {
+    const data = form.getValues();
+    createOfferCall.write({
+      args: [
+        parseUnits(`${+data.amount}`, TOKEN_DECIMALS),
+        parseUnits(`${+data.fiatToTokenExchangeRate}`, TOKEN_DECIMALS),
+        data.iban,
+      ],
+    });
+  };
+
+  const checkWallet = approveCall.isLoading || createOfferCall.isLoading;
+  const isLoading = waitingApprove.isLoading || waitingCreateOffer.isLoading || checkWallet;
 
   return (
     <StyledSell>
@@ -50,7 +96,7 @@ export default function Sell() {
               <FormItem>
                 <FormLabel>Amount</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Enter the amount you want to sell" {...field} />
+                  <Input disabled={isLoading} type="number" placeholder="Enter the amount you want to sell" {...field} />
                 </FormControl>
                 <FormDescription>This is the amount in USDC you want to sell by EUR.</FormDescription>
                 <FormMessage />
@@ -65,7 +111,7 @@ export default function Sell() {
               <FormItem>
                 <FormLabel>Exchange rate</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Enter the sell exchange rate" {...field} />
+                  <Input disabled={isLoading} type="number" placeholder="Enter the sell exchange rate" {...field} />
                 </FormControl>
                 <FormDescription>
                   Please enter how much EUR you want for 1 USDC. <br /> (i.e. 1.12 EUR per USDC)
@@ -82,7 +128,7 @@ export default function Sell() {
               <FormItem>
                 <FormLabel>IBAN account</FormLabel>
                 <FormControl>
-                  <Input type="string" placeholder="Enter the IBAN account" {...field} />
+                  <Input disabled={isLoading} type="string" placeholder="Enter the IBAN account" {...field} />
                 </FormControl>
                 <FormDescription>IBAN account where you want to receive the EUR.</FormDescription>
                 <FormMessage />
@@ -90,8 +136,14 @@ export default function Sell() {
             )}
           />
 
-          <Button variant="default" className="w-full mt-5">
-            Create sell offer
+          <Button disabled={isLoading} variant="default" className="w-full mt-5">
+            {isLoading
+              ? checkWallet
+                ? "Check your wallet..."
+                : waitingApprove.isLoading
+                ? "Approving token spending..."
+                : "Creating offer..."
+              : "Create sell offer"}
           </Button>
         </form>
       </Form>
