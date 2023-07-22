@@ -6,4 +6,4 @@
 	url = https://github.com/Openzeppelin/openzeppelin-contracts
 [submodule "apps/contracts/lib/contracts"]
 	path = apps/contracts/lib/contracts
-	url = https://github.com/0xPolygonID/contracts
+	url = https://github.com/iden3/contracts
