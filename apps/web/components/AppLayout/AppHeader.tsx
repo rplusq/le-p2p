@@ -4,14 +4,15 @@ import { Web3Button } from "@web3modal/react";
 import { Button } from "../ui/button";
 import { StyledAppHeader } from "./styles";
 import { useAccount, useBalance, useConnect } from "wagmi";
-import { USDC_TOKEN_ADDRESS } from "@/lib/constans";
 import millify from "millify";
 import { useEffect, useState } from "react";
+import { usdcMockAddress } from "@/generated";
+import { polygonMumbai } from "wagmi/chains";
 
 export default function AppHeader() {
   const { address } = useAccount();
   const { connectors } = useConnect();
-  const usdcBalance = useBalance({ address, token: USDC_TOKEN_ADDRESS });
+  const usdcBalance = useBalance({ address, token: usdcMockAddress[polygonMumbai.id] });
   const [connectorsReady, setConnectorsReady] = useState(false);
 
   useEffect(() => {
