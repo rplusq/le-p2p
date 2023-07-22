@@ -4,3 +4,6 @@ out = "out"
 libs = ["lib"]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+
+# For Mumbai
+libraries=["./lib/contracts/contracts/lib/SpongePoseidon.sol:SpongePoseidon:0x12d8C87A61dAa6DD31d8196187cFa37d1C647153", "./lib/contracts/contracts/lib/Poseidon.sol:PoseidonUnit6L:0xb588b8f07012Dc958aa90EFc7d3CF943057F17d7"]
