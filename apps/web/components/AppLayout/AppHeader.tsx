@@ -3,12 +3,12 @@
 import { Web3Button } from "@web3modal/react";
 import { Button } from "../ui/button";
 import { StyledAppHeader } from "./styles";
-import { useRouter, usePathname } from "next/navigation";
+import { useAccount, useBalance } from "wagmi";
+import { USDC_TOKEN_ADDRESS } from "@/lib/constans";
 
 export default function AppHeader() {
-  const router = useRouter();
-  const pathname = usePathname();
-  console.log(pathname);
+  const { address } = useAccount();
+  const usdcBalance = useBalance({ address, token: USDC_TOKEN_ADDRESS });
 
   return (
     <StyledAppHeader>
@@ -31,7 +31,7 @@ export default function AppHeader() {
             fill="#fff"
           />
         </svg>
-        <span className="font-bold ml-2">10.34</span>
+        <span className="font-bold ml-2">{usdcBalance.data?.formatted}</span>
       </Button>
       <Web3Button />
     </StyledAppHeader>
