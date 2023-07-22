@@ -1,43 +1,40 @@
 import { Offer } from "@/models/Offer";
 import { UseQueryResult, useQuery } from "react-query";
-import { zeroAddress } from "viem";
+
+const GET_OFFERS = `
+  query {
+    offers: orders(where: {status: "STANDBY"}) {
+      id
+      seller
+      buyer
+      amount
+      fiatToTokenExchangeRate
+      iban
+      status
+      paymentProof
+      reason
+    }
+  }
+`;
 
 const getAllSellOffers = async (): Promise<Offer[]> => {
-  return [
-    {
-      id: 0,
-      amount: 10,
-      seller: "0xd77DEd1CF30847d51e46f6f6C8cbFef0b7abB5Bf",
-      buyer: zeroAddress,
-      fiatToTokenExchangeRate: 1.12,
-      iban: "LU 28 001 94006447500003",
-      paymentProof: "",
-    },
-    {
-      id: 2,
-      amount: 15,
-      seller: "0xd77DEd1CF30847d51e46f6f6C8cbFef0b7abB5Bf",
-      buyer: zeroAddress,
-      fiatToTokenExchangeRate: 1.13,
-      iban: "LU 28 001 94006447500034",
-      paymentProof: "",
-    },
-    {
-      id: 3,
-      amount: 18.6,
-      seller: "0xd77DEd1CF30847d51e46f6f6C8cbFef0b7abB5Bf",
-      buyer: "0xd77DEd1CF30847d51e46f6f6C8cbFef0b7abB5Bf",
-      fiatToTokenExchangeRate: 1.16,
-      iban: "LU 28 001 940064475000349",
-      paymentProof: "",
-    },
-  ];
+  const subgraphUrl = process.env.NEXT_PUBLIC_SUBGRAPH_URL ?? "";
+  const resTest = await fetch(subgraphUrl, {
+    method: "POST",
+    body: JSON.stringify({ query: GET_OFFERS }),
+    headers: { "Content-Type": "application/json" },
+  });
+  const dataJson = await resTest.json();
+
+  return dataJson.data.offers;
 };
 
 export const useSellOffers = (): UseQueryResult<Offer[]> => {
   const queryResult = useQuery({
     queryKey: ["sell-offers"],
     queryFn: () => getAllSellOffers(),
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
   });
 
   return queryResult;
