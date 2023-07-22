@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={roboto.className}>
         <ClientLayout>
-          <AppLayout noNav>
+          <AppLayout>
             <main>{children}</main>
           </AppLayout>
         </ClientLayout>

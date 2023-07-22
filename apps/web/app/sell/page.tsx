@@ -33,6 +33,8 @@ export default function Sell() {
   }, [router, address]);
 
   function onSubmit(data: SellFormValues) {
+    // TODO:
+    // Call contract
     console.log(data);
   }
 
