@@ -22,7 +22,7 @@ export default function Activity() {
   }, [router, address]);
 
   const buyerView = () => {
-    const waiting = true;
+    const waiting = false;
 
     if (waiting) {
       return (

@@ -10,6 +10,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/Input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { useSellOffers } from "../buy/service";
 
 const sellFormSchema = z.object({
   amount: z.string(),
@@ -22,7 +23,6 @@ type SellFormValues = z.infer<typeof sellFormSchema>;
 export default function Sell() {
   const router = useRouter();
   const { address } = useAccount();
-  console.log(address);
 
   const form = useForm<SellFormValues>({
     resolver: zodResolver(sellFormSchema),

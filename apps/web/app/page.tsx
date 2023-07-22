@@ -11,6 +11,8 @@ export default function Home() {
   const { connectors } = useConnect();
   const [connectorsReady, setConnectorsReady] = useState(false);
 
+  console.log("aaaaaaaaa", connectors);
+
   useEffect(() => {
     if (address) router.push("/buy");
   }, [router, address]);
