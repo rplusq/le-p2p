@@ -78,9 +78,6 @@ contract LeP2PTest is Test {
         _verifyAndRegisterAddress(SELLER);
         _verifyAndRegisterAddress(SELLER_2);
         _verifyAndRegisterAddress(BUYER);
-        // set up circuit
-        CircuitMock circuit = new CircuitMock();
-        // stdstore.target(address(escrow)).sig("requestQueries(uint64)").withKey(escrow.KYC_REQUEST_ID()).depth(0).checked_write(ICircuitValidator(circuit));
     }
 
     function testCreateOrderOK() public {

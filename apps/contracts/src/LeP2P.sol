@@ -319,5 +319,11 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         _addressToKycId[_msgSender()] = id;
     }
 
+    function isKycVerified() external view returns (bool) {
+        return _addressToKycId[_msgSender()] != 0;
+    }
 
+    function isVerifiedHuman() external view returns (bool) {
+        return _addressToWorldcoinNullifierHash[_msgSender()] != 0;
+    }
 }
