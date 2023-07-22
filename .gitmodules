@@ -7,3 +7,6 @@
 [submodule "apps/contracts/lib/contracts"]
 	path = apps/contracts/lib/contracts
 	url = https://github.com/iden3/contracts
+[submodule "apps/contracts/lib/solidity-bytes-utils"]
+	path = apps/contracts/lib/solidity-bytes-utils
+	url = https://github.com/GNSPS/solidity-bytes-utils
