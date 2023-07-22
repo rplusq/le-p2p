@@ -26,7 +26,10 @@ contract LeP2PTest is Test {
     address public constant BUYER = address(1);
     address public constant SELLER = address(2);
     address public constant ARBITRATOR = address(3);
-    address public constant SELLER2 = address(4);
+    address public constant SELLER_2 = address(4);
+    address public constant BUYER_2 = address(5);
+    address public constant NOT_REGISTERED_SELLER = address(101);
+    address public constant NOT_REGISTERED_BUYER = address(102);
     uint256 public constant INITIAL_CAPITAL = 1e6 * 2000;
     uint256 public allowedAmount;
     string public constant IBAN = "ES6621000418401234567891";
@@ -62,6 +65,10 @@ contract LeP2PTest is Test {
         vm.label(SELLER, "SELLER");
         vm.label(BUYER, "BUYER");
         vm.label(ARBITRATOR, "ARBITRATOR");
+        vm.label(SELLER_2, "SELLER_2");
+        vm.label(BUYER_2, "BUYER_2");
+        vm.label(NOT_REGISTERED_SELLER, "NOT_REGISTERED_SELLER");
+        vm.label(NOT_REGISTERED_BUYER, "NOT_REGISTERED_BUYER");
         token = new USDCMock();
         worldId = new MockWorldId();
         vm.startPrank(ARBITRATOR);
@@ -69,16 +76,16 @@ contract LeP2PTest is Test {
         vm.stopPrank();
         allowedAmount = escrow.MAX_AMOUNT_NON_VERIFIED();
         token.mint(SELLER, INITIAL_CAPITAL);
-        token.mint(SELLER2, INITIAL_CAPITAL);
+        token.mint(SELLER_2, INITIAL_CAPITAL);
         vm.startPrank(SELLER);
         token.approve(address(escrow), type(uint256).max);
         vm.stopPrank();
-        vm.startPrank(SELLER2);
+        vm.startPrank(SELLER_2);
         token.approve(address(escrow), type(uint256).max);
         vm.stopPrank();
         // register seller and buyer
         _verifyAndRegisterAddress(SELLER);
-        _verifyAndRegisterAddress(SELLER2);
+        _verifyAndRegisterAddress(SELLER_2);
         _verifyAndRegisterAddress(BUYER);
     }
 
@@ -97,6 +104,38 @@ contract LeP2PTest is Test {
         assertEq(token.balanceOf(BUYER), 0);
         assertEq(escrow.nextOrderId(), 2);
         (address orderSeller, uint256 orederAmount, uint256 oderFiatToTokenExchange, string memory oderIban, address oderBuyer, string memory orderPaymentProof) = escrow.orders(1);
+        assertEq(orderSeller, SELLER);
+        assertEq(orederAmount, allowedAmount);
+        assertEq(oderFiatToTokenExchange, FIAT_TO_TOKEN_EXCHANGE_RATE);
+        assertEq(oderIban, IBAN);
+        assertEq(oderBuyer, address(0));
+        assertEq(bytes(orderPaymentProof).length, 0);
+    }
+
+    function testCreateOrderWithCancelAndLimitOK() public {
+        // WHEN
+        vm.expectEmit(true, true, true, true);
+        emit OrderCreated(1, SELLER, allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+        vm.prank(SELLER);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+
+        vm.prank(SELLER);
+        vm.expectEmit(true, true, true, true);
+        emit OrderCancelled(1, REASON);
+        escrow.cancelOrderSeller(1, REASON);
+
+
+        vm.expectEmit(true, true, true, true);
+        emit OrderCreated(2, SELLER, allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+        vm.prank(SELLER);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+
+        //THEN
+        assertEq(token.balanceOf(SELLER), INITIAL_CAPITAL - allowedAmount);
+        assertEq(token.balanceOf(address(escrow)), allowedAmount);
+        assertEq(token.balanceOf(BUYER), 0);
+        assertEq(escrow.nextOrderId(), 3);
+        (address orderSeller, uint256 orederAmount, uint256 oderFiatToTokenExchange, string memory oderIban, address oderBuyer, string memory orderPaymentProof) = escrow.orders(2);
         assertEq(orderSeller, SELLER);
         assertEq(orederAmount, allowedAmount);
         assertEq(oderFiatToTokenExchange, FIAT_TO_TOKEN_EXCHANGE_RATE);
@@ -150,6 +189,40 @@ contract LeP2PTest is Test {
         escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
     }
 
+    function testRevertCreateOrderNotRegistered() public {
+        // WHEN + THEN
+        vm.prank(NOT_REGISTERED_SELLER);
+        vm.expectRevert("Address not registered");
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+    }
+
+    function testReserveOrderWithReleaseAndLimitOK() public {
+        // GIVEN
+        vm.prank(SELLER);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+
+        vm.expectEmit(true, true, true, true);
+        emit OrderReserved(1, BUYER);
+        vm.prank(BUYER);
+        escrow.reserveOrder(1);
+
+        vm.expectEmit(true, true, true, true);
+        emit OrderReleased(1, REASON);
+        vm.prank(BUYER);
+        escrow.releaseOrderBuyer(1, REASON);
+
+        // WHEN
+        vm.expectEmit(true, true, true, true);
+        emit OrderReserved(1, BUYER);
+        vm.prank(BUYER);
+        escrow.reserveOrder(1);
+
+        //THEN
+        (, , , , address oderBuyer,) = escrow.orders(1);
+
+        assertEq(oderBuyer, BUYER);
+    }
+
     function testReserveOrderOK() public {
         // GIVEN
         vm.prank(SELLER);
@@ -194,7 +267,7 @@ contract LeP2PTest is Test {
         vm.prank(SELLER);
         escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
-        vm.prank(SELLER2);
+        vm.prank(SELLER_2);
         escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
@@ -204,6 +277,13 @@ contract LeP2PTest is Test {
         vm.prank(BUYER);
         vm.expectRevert("Address needs to be kycd for amounts greater than 1000");
         escrow.reserveOrder(2);
+    }
+
+    function testRevertReserveOrderUserNotRegistered() public {
+        // WHEN + THEN
+        vm.prank(NOT_REGISTERED_BUYER);
+        vm.expectRevert("Address not registered");
+        escrow.reserveOrder(1);
     }
 
     function testSubmitPaymentOK() public {
