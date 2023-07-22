@@ -56,7 +56,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     mapping(address => uint256) public userVolume;
 
     /// @dev The request ID for the transfer circuit
-    uint64 public constant TRANSFER_REQUEST_ID = 1;
+    uint64 public constant KYC_REQUEST_ID = 1;
 
 
 	/// @param worldId_ The WorldID instance that will verify the proofs
@@ -311,7 +311,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         ICircuitValidator validator
     ) internal override {
         require(
-            requestId == TRANSFER_REQUEST_ID && _addressToKycId[_msgSender()] == 0,
+            requestId == KYC_REQUEST_ID && _addressToKycId[_msgSender()] == 0,
             "proof can not be submitted more than once"
         );
 

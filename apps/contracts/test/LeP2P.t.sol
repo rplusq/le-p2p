@@ -1,25 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
+import "@iden3/contracts/interfaces/ICircuitValidator.sol";
 import "./mocks/MockWorldId.sol";
+import "./mocks/USDCMock.sol";
+import "./mocks/CircuitMock.sol";
 import "../src/LeP2P.sol";
 
-contract USDCMock is ERC20 {
-    constructor() ERC20("USDC", "USDC") {}
-    
-    function decimals() public view virtual override returns (uint8) {
-        return 6;
-    }
-
-    function mint(address account, uint256 amount) external {
-        _mint(account, amount);
-    }
-}
-
 contract LeP2PTest is Test {
+    using stdStorage for StdStorage;
     LeP2PEscrow public escrow;
     USDCMock public token;
     MockWorldId public worldId;
@@ -87,6 +78,9 @@ contract LeP2PTest is Test {
         _verifyAndRegisterAddress(SELLER);
         _verifyAndRegisterAddress(SELLER_2);
         _verifyAndRegisterAddress(BUYER);
+        // set up circuit
+        CircuitMock circuit = new CircuitMock();
+        // stdstore.target(address(escrow)).sig("requestQueries(uint64)").withKey(escrow.KYC_REQUEST_ID()).depth(0).checked_write(ICircuitValidator(circuit));
     }
 
     function testCreateOrderOK() public {
