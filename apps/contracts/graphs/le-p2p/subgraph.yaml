@@ -1,0 +1,51 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: LeP2P
+    network: mumbai
+    source:
+      address: "0x920Ebf34113aC79B5793523EdAB81691872648DD"
+      abi: LeP2P
+      startBlock: 38200612
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - OrderCancelled
+        - OrderCompleted
+        - OrderCreated
+        - OrderPayed
+        - OrderReleased
+        - OrderReserved
+        - OwnershipTransferred
+        - RoleAdminChanged
+        - RoleGranted
+        - RoleRevoked
+      abis:
+        - name: LeP2P
+          file: ./abis/LeP2P.json
+      eventHandlers:
+        - event: OrderCancelled(uint256,string)
+          handler: handleOrderCancelled
+        - event: OrderCompleted(uint256,address,string)
+          handler: handleOrderCompleted
+        - event: OrderCreated(uint256,address,uint256,uint256,string)
+          handler: handleOrderCreated
+        - event: OrderPayed(uint256,address,string)
+          handler: handleOrderPayed
+        - event: OrderReleased(uint256,string)
+          handler: handleOrderReleased
+        - event: OrderReserved(uint256,address)
+          handler: handleOrderReserved
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: RoleAdminChanged(indexed bytes32,indexed bytes32,indexed bytes32)
+          handler: handleRoleAdminChanged
+        - event: RoleGranted(indexed bytes32,indexed address,indexed address)
+          handler: handleRoleGranted
+        - event: RoleRevoked(indexed bytes32,indexed address,indexed address)
+          handler: handleRoleRevoked
+      file: ./src/le-p-2-p.ts
