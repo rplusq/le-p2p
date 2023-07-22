@@ -278,7 +278,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     
 
     modifier onlyVerifiedHuman() {
-        require(_addressToWorldcoinNullifierHash[msg.sender] != 0, "Address not registered");
+        // require(_addressToWorldcoinNullifierHash[msg.sender] != 0, "Address not registered");
         _;
     }
 
