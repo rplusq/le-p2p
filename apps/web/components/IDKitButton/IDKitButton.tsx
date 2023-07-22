@@ -3,11 +3,10 @@
 import { IDKitWidget, CredentialType } from "@worldcoin/idkit";
 import { Button } from "../ui/button";
 import { useAccount, useContractWrite } from "wagmi";
-import { useLeP2PEscrowVerifyAndRegister } from "@/generated";
+import { leP2PEscrowAddress, useLeP2PEscrowVerifyAndRegister } from "@/generated";
 import { decodeAbiParameters } from "viem";
 import { LeP2P_abi } from "@/abis/LeP2P_abi";
-import { LE_P2P_ESCROW_ADDRESS } from "@/lib/constans";
-import { polygonMumbai } from "viem/chains";
+import { polygonMumbai } from "wagmi/chains";
 // import { defaultAbiCoder } from "ethers/lib/utils";
 
 export const IDKitButton = () => {
@@ -17,7 +16,7 @@ export const IDKitButton = () => {
   const { writeAsync } = useContractWrite({
     abi: LeP2P_abi,
     functionName: "verifyAndRegister",
-    address: LE_P2P_ESCROW_ADDRESS,
+    address: leP2PEscrowAddress[polygonMumbai.id],
     chainId: polygonMumbai.id,
   });
 
