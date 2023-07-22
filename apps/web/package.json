@@ -23,6 +23,7 @@
     "@types/react-dom": "18.2.7",
     "@web3modal/ethereum": "^2.7.0",
     "@web3modal/react": "^2.7.0",
+    "@worldcoin/idkit": "^0.5.1",
     "autoprefixer": "10.4.14",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
