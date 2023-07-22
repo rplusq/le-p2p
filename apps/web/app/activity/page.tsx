@@ -9,20 +9,22 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import CheckIcon from "@mui/icons-material/Check";
+import { useActiveOrder } from "./service";
 
 export default function Activity() {
   const router = useRouter();
   const { address } = useAccount();
-  console.log(address);
-
-  const activeOrder = true;
+  const { data: activeOrder } = useActiveOrder();
 
   useEffect(() => {
     if (!address) router.push("/");
   }, [router, address]);
 
   const buyerView = () => {
-    const waiting = false;
+    if (!activeOrder) return null;
+
+    // If paymentProof is set, buyer is waiting for seller to confirm payment
+    const waiting = !!activeOrder?.paymentProof;
 
     if (waiting) {
       return (
@@ -40,7 +42,7 @@ export default function Activity() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium leading-none">IBAN account</p>
-                    <p className="text-sm text-muted-foreground">LU 28 001 94006447500003</p>
+                    <p className="text-sm text-muted-foreground">{activeOrder.iban}</p>
                   </div>
                 </div>
               </div>
@@ -52,7 +54,9 @@ export default function Activity() {
       return (
         <>
           <p className="mt-5">
-            Please, you need to send <strong>23EUR</strong> to the payment method listed below:
+            Please, you need to send{" "}
+            <strong>{((activeOrder?.amount ?? 0) / (activeOrder?.fiatToTokenExchangeRate ?? 0)).toFixed(2)}€</strong> to the
+            payment method listed below:
           </p>
 
           <Card className="mt-3">
@@ -66,7 +70,7 @@ export default function Activity() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium leading-none">IBAN account</p>
-                    <p className="text-sm text-muted-foreground">LU 28 001 94006447500003</p>
+                    <p className="text-sm text-muted-foreground">{activeOrder?.iban}</p>
                   </div>
                 </div>
               </div>
@@ -83,7 +87,10 @@ export default function Activity() {
   };
 
   const sellerView = () => {
-    const waiting = true;
+    if (!activeOrder) return null;
+
+    // If paymentProof is not set, seller is waiting for buyer to make the payment
+    const waiting = !activeOrder?.paymentProof;
 
     if (waiting) {
       return (
@@ -101,7 +108,7 @@ export default function Activity() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium leading-none">IBAN account</p>
-                    <p className="text-sm text-muted-foreground">LU 28 001 94006447500003</p>
+                    <p className="text-sm text-muted-foreground">{activeOrder?.iban}</p>
                   </div>
                 </div>
               </div>
@@ -113,7 +120,9 @@ export default function Activity() {
       return (
         <>
           <p className="mt-5">
-            The buyer already paid you to your IBAN account. Please, confirm the payment to finish the transaction.
+            The buyer already paid you to your IBAN account. Please, confirm you received{" "}
+            <strong>{((activeOrder?.amount ?? 0) / (activeOrder?.fiatToTokenExchangeRate ?? 0)).toFixed(2)}€</strong> to finish
+            the transaction.
           </p>
 
           <Card className="mt-3">
@@ -127,7 +136,7 @@ export default function Activity() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium leading-none">IBAN account</p>
-                    <p className="text-sm text-muted-foreground">LU 28 001 94006447500003</p>
+                    <p className="text-sm text-muted-foreground">{activeOrder.iban}</p>
                   </div>
                 </div>
               </div>
@@ -149,8 +158,8 @@ export default function Activity() {
 
       {activeOrder ? (
         <>
-          <OfferCard />
-          {buyerView()}
+          <OfferCard offer={activeOrder} noActions />
+          {address === activeOrder.buyer ? buyerView() : sellerView()}
         </>
       ) : (
         <div>You have no active order</div>

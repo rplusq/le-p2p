@@ -1,9 +1,26 @@
 import styled, { css } from "styled-components";
 
-export const StyledOfferCard = styled.div<{ disabled: boolean }>(
-  ({ disabled }) => css`
+export const StyledOfferCard = styled.div<{ disabled: boolean; noActions: boolean }>(
+  ({ disabled, noActions }) => css`
     position: relative;
     overflow: hidden;
+
+    .offer-card {
+      cursor: pointer;
+
+      &:hover {
+        background-color: #f5f5f5;
+      }
+
+      ${noActions &&
+      css`
+        cursor: default;
+
+        &:hover {
+          background-color: transparent;
+        }
+      `}
+    }
 
     ${disabled &&
     css`

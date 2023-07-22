@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "react-query";
 import { FC, PropsWithChildren, useState } from "react";
-import { polygon } from "wagmi/chains";
+import { polygonMumbai } from "wagmi/chains";
 import { WagmiConfig, configureChains, createConfig } from "wagmi";
 import { jsonRpcProvider } from "wagmi/providers/jsonRpc";
 import { EthereumClient, w3mConnectors, w3mProvider } from "@web3modal/ethereum";
@@ -12,7 +12,7 @@ import { StyledMainApp } from "./styles";
 import { Web3Modal } from "@web3modal/react";
 
 const WEB3_MODAL_PROJECT_ID = process.env.NEXT_PUBLIC_WEB3_MODAL_PROJECT_ID ?? "";
-const chains = [polygon];
+const chains = [polygonMumbai];
 
 const { publicClient } = configureChains(chains, [
   w3mProvider({ projectId: WEB3_MODAL_PROJECT_ID }),

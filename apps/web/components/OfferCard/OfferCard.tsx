@@ -5,12 +5,13 @@ import { zeroAddress } from "viem";
 
 type OfferCardProps = {
   offer: Offer;
+  noActions?: boolean;
 };
 
-export default function OfferCard({ offer }: OfferCardProps) {
+export default function OfferCard({ offer, noActions = false }: OfferCardProps) {
   return (
-    <StyledOfferCard disabled={offer.buyer !== zeroAddress}>
-      <Card>
+    <StyledOfferCard noActions={noActions} disabled={!noActions && offer.buyer !== zeroAddress}>
+      <Card className="offer-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Buy USDC with EURO</CardTitle>
           <svg
@@ -35,7 +36,7 @@ export default function OfferCard({ offer }: OfferCardProps) {
             <span className="text-xs text-muted-foreground ml-2">per USDC</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {((offer?.amount ?? 0) * (offer?.fiatToTokenExchangeRate ?? 0)).toFixed(2)}€ per {offer?.amount.toFixed(2)}USDC
+            {((offer?.amount ?? 0) / (offer?.fiatToTokenExchangeRate ?? 0)).toFixed(2)}€ per {offer?.amount.toFixed(2)}USDC
           </p>
         </CardContent>
       </Card>
