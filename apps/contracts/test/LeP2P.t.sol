@@ -26,8 +26,15 @@ contract LeP2PTest is Test {
     address public constant BUYER = address(1);
     address public constant SELLER = address(2);
     address public constant ARBITRATOR = address(3);
+    address public constant SELLER2 = address(4);
+    uint256 public constant INITIAL_CAPITAL = 1e6 * 2000;
+    uint256 public allowedAmount;
+    string public constant IBAN = "ES6621000418401234567891";
+    uint256 public constant FIAT_TO_TOKEN_EXCHANGE_RATE = 10;
+    string public constant IPFS_HASH = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
+    string public constant REASON = "test";
 
-    event OrderCreated(uint256 id, address seller, uint256 amount, uint256 fiatToTokenExchangeRate, string iban);
+    event OrderCreated(uint256 id, address seller, uint256 amount, uint256 fiatToTokenExchange, string iban);
     event OrderCancelled(uint256 id, string reason);
     event OrderPayed(uint256 id, address buyer, string paymentProof);
     event OrderReserved(uint256 id, address buyer);
@@ -59,38 +66,41 @@ contract LeP2PTest is Test {
         worldId = new MockWorldId();
         vm.startPrank(ARBITRATOR);
         escrow = new LeP2PEscrow(IWorldId(address(worldId)), "appId", "actionId", token);
-        token.mint(SELLER, 1e6 * 2000);
+        vm.stopPrank();
+        allowedAmount = escrow.MAX_AMOUNT_NON_VERIFIED();
+        token.mint(SELLER, INITIAL_CAPITAL);
+        token.mint(SELLER2, INITIAL_CAPITAL);
         vm.startPrank(SELLER);
+        token.approve(address(escrow), type(uint256).max);
+        vm.stopPrank();
+        vm.startPrank(SELLER2);
         token.approve(address(escrow), type(uint256).max);
         vm.stopPrank();
         // register seller and buyer
         _verifyAndRegisterAddress(SELLER);
+        _verifyAndRegisterAddress(SELLER2);
         _verifyAndRegisterAddress(BUYER);
     }
 
     function testCreateOrderOK() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-
         vm.expectEmit(true, true, true, true);
-        emit OrderCreated(1, SELLER, amount, fiatToTokenExchangeRate, iban);
+        emit OrderCreated(1, SELLER, allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         // WHEN
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         //THEN
-        assertEq(token.balanceOf(SELLER), 0);
-        assertEq(token.balanceOf(address(escrow)), 1e6);
+        assertEq(token.balanceOf(SELLER), INITIAL_CAPITAL - allowedAmount);
+        assertEq(token.balanceOf(address(escrow)), allowedAmount);
         assertEq(token.balanceOf(BUYER), 0);
         assertEq(escrow.nextOrderId(), 2);
-        (address orderSeller, uint256 orederAmount, uint256 oderFiatToTokenExchangeRate, string memory oderIban, address oderBuyer, string memory orderPaymentProof) = escrow.orders(1);
+        (address orderSeller, uint256 orederAmount, uint256 oderFiatToTokenExchange, string memory oderIban, address oderBuyer, string memory orderPaymentProof) = escrow.orders(1);
         assertEq(orderSeller, SELLER);
-        assertEq(orederAmount, amount);
-        assertEq(oderFiatToTokenExchangeRate, fiatToTokenExchangeRate);
-        assertEq(oderIban, iban);
+        assertEq(orederAmount, allowedAmount);
+        assertEq(oderFiatToTokenExchange, FIAT_TO_TOKEN_EXCHANGE_RATE);
+        assertEq(oderIban, IBAN);
         assertEq(oderBuyer, address(0));
         assertEq(bytes(orderPaymentProof).length, 0);
     }
@@ -98,47 +108,52 @@ contract LeP2PTest is Test {
     function testRevertCreateOrderAmount() public {
         // GIVEN
         uint256 amount = 0;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
 
         // WHEN + THEN
         vm.prank(SELLER);
         vm.expectRevert("Amount must be greater than 0");
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(amount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
     }
 
     function testRevertCreateOrderRate() public {
-        // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 0;
-        string memory iban = "ES6621000418401234567891";
-
         // WHEN + THEN
         vm.prank(SELLER);
         vm.expectRevert("Exchange rate must be greater than 0");
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, 0, IBAN);
     }
 
     function testRevertCreateOrderIBAN() public {
-        // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "";
-
         // WHEN + THEN
         vm.prank(SELLER);
         vm.expectRevert("IBAN must not be empty");
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, "");
+    }
+
+    function testRevertCreateOrderAmountTooBigUnverified() public {
+        // GIVEN
+        uint256 amount = allowedAmount + 1;
+
+        // WHEN + THEN
+        vm.prank(SELLER);
+        vm.expectRevert("Address needs to be kycd for amounts greater than 1000");
+        escrow.createOrder(amount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+    }
+
+    function testRevertCreateOrderAccumulationTooBigUnverified() public {
+        // GIVEN
+        vm.prank(SELLER);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+
+        // WHEN + THEN
+        vm.prank(SELLER);
+        vm.expectRevert("Address needs to be kycd for amounts greater than 1000");
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
     }
 
     function testReserveOrderOK() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.expectEmit(true, true, true, true);
         emit OrderReserved(1, BUYER);
@@ -162,12 +177,8 @@ contract LeP2PTest is Test {
 
     function testRevertReserveOrderBuyerPresent() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
@@ -178,15 +189,27 @@ contract LeP2PTest is Test {
         escrow.reserveOrder(1);
     }
 
+    function testRevertReserveOrderAccumulationTooBigUnverified() public {
+        // GIVEN
+        vm.prank(SELLER);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+
+        vm.prank(SELLER2);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
+
+        vm.prank(BUYER);
+        escrow.reserveOrder(1);
+
+        // WHEN + THEN
+        vm.prank(BUYER);
+        vm.expectRevert("Address needs to be kycd for amounts greater than 1000");
+        escrow.reserveOrder(2);
+    }
+
     function testSubmitPaymentOK() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory ipfsHash = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
@@ -194,8 +217,8 @@ contract LeP2PTest is Test {
         // WHEN
         vm.prank(BUYER);
         vm.expectEmit(true, true, true, true);
-        emit OrderPayed(1, BUYER, ipfsHash);
-        escrow.submitPayment(1, ipfsHash);
+        emit OrderPayed(1, BUYER, IPFS_HASH);
+        escrow.submitPayment(1, IPFS_HASH);
 
         //THEN
         (, , , , address oderBuyer,) = escrow.orders(1);
@@ -204,24 +227,16 @@ contract LeP2PTest is Test {
     }
 
     function testRevertSubmitPaymentOrderNotExists() public {
-        // GIVEN
-        string memory ipfsHash = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
-
         // WHEN + THEN
         vm.prank(BUYER);
         vm.expectRevert("Order does not exist");
-        escrow.submitPayment(1, ipfsHash);
+        escrow.submitPayment(1, IPFS_HASH);
     }
 
     function testRevertSubmitPaymentNotBuyer() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory ipfsHash = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
@@ -229,38 +244,33 @@ contract LeP2PTest is Test {
         // WHEN
         vm.prank(SELLER);
         vm.expectRevert("Not the buyer");
-        escrow.submitPayment(1, ipfsHash);
+        escrow.submitPayment(1, IPFS_HASH);
     }
 
     function testConfirmOrderOK() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory ipfsHash = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
 
         vm.prank(BUYER);
-        escrow.submitPayment(1, ipfsHash);
+        escrow.submitPayment(1, IPFS_HASH);
 
         // WHEN
         vm.prank(SELLER);
         vm.expectEmit(true, true, true, true);
-        emit OrderCompleted(1, BUYER, ipfsHash);
+        emit OrderCompleted(1, BUYER, IPFS_HASH);
         escrow.confirmOrder(1);
 
         //THEN
         (address oderSeller, , , , ,) = escrow.orders(1);
 
         assertEq(oderSeller, address(0));
-        assertEq(token.balanceOf(SELLER), 0);
+        assertEq(token.balanceOf(SELLER), INITIAL_CAPITAL - allowedAmount);
         assertEq(token.balanceOf(address(escrow)), 0);
-        assertEq(token.balanceOf(BUYER), 1e6);
+        assertEq(token.balanceOf(BUYER), allowedAmount);
     }
 
     function testRevertConfirmOrderOrderNotExist() public {
@@ -272,19 +282,14 @@ contract LeP2PTest is Test {
 
     function testRevertConfirmOrderNotSeller() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory ipfsHash = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
 
         vm.prank(BUYER);
-        escrow.submitPayment(1, ipfsHash);
+        escrow.submitPayment(1, IPFS_HASH);
 
         // WHEN + THEN
         vm.prank(BUYER);
@@ -294,12 +299,8 @@ contract LeP2PTest is Test {
 
     function testRevertConfirmOrderNoBuyer() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         // WHEN + THEN
         vm.prank(SELLER);
@@ -309,33 +310,28 @@ contract LeP2PTest is Test {
 
     function testArbitrateCompleteOrderOK() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory ipfsHash = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
 
         vm.prank(BUYER);
-        escrow.submitPayment(1, ipfsHash);
+        escrow.submitPayment(1, IPFS_HASH);
 
         // WHEN
         vm.prank(ARBITRATOR);
         vm.expectEmit(true, true, true, true);
-        emit OrderCompleted(1, BUYER, ipfsHash);
+        emit OrderCompleted(1, BUYER, IPFS_HASH);
         escrow.arbitrateCompleteOrder(1);
 
         //THEN
         (address oderSeller, , , , ,) = escrow.orders(1);
 
         assertEq(oderSeller, address(0));
-        assertEq(token.balanceOf(SELLER), 0);
+        assertEq(token.balanceOf(SELLER), INITIAL_CAPITAL - allowedAmount);
         assertEq(token.balanceOf(address(escrow)), 0);
-        assertEq(token.balanceOf(BUYER), 1e6);
+        assertEq(token.balanceOf(BUYER), allowedAmount);
     }
 
     function testRevertArbitrateCompleteOrderOrderNotExist() public {
@@ -347,12 +343,8 @@ contract LeP2PTest is Test {
 
     function testRevertArbitrateCompleteOrderNoBuyer() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         // WHEN + THEN
         vm.prank(ARBITRATOR);
@@ -362,19 +354,14 @@ contract LeP2PTest is Test {
 
     function testRevertArbitrateCompleteOrderNotArbitrator() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory ipfsHash = "QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4";
-
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
 
         vm.prank(BUYER);
-        escrow.submitPayment(1, ipfsHash);
+        escrow.submitPayment(1, IPFS_HASH);
 
         // WHEN + THEN
         vm.prank(SELLER);
@@ -383,25 +370,21 @@ contract LeP2PTest is Test {
     }
 
     function testCancelOrderSellerOK() public {
-        // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory reason = "test";
+        // GIVEN  
         uint256 orderId = 1;
 
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         // WHEN
         vm.expectEmit(true, true, true, true);
-        emit OrderCancelled(orderId, reason);
+        emit OrderCancelled(orderId, REASON);
 
         vm.prank(SELLER);
-        escrow.cancelOrderSeller(orderId, reason);
+        escrow.cancelOrderSeller(orderId, REASON);
 
         //THEN
-        assertEq(token.balanceOf(SELLER), 1e6);
+        assertEq(token.balanceOf(SELLER), INITIAL_CAPITAL);
         assertEq(token.balanceOf(address(escrow)), 0);
         assertEq(token.balanceOf(BUYER), 0);
         assertEq(escrow.nextOrderId(), 2);
@@ -411,42 +394,33 @@ contract LeP2PTest is Test {
 
     function testRevertCancelOrderSellerOrderNotExist() public {
         // GIVEN
-        string memory reason = "test";
         uint256 orderId = 1;
 
         // WHEN + THEN
         vm.prank(SELLER);
         vm.expectRevert("Order does not exist");
-        escrow.cancelOrderSeller(orderId, reason);
+        escrow.cancelOrderSeller(orderId, REASON);
     }
 
     function testRevertCancelOrderSellerNotSeller() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory reason = "test";
         uint256 orderId = 1;
 
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         // WHEN + THEN
         vm.prank(BUYER);
         vm.expectRevert("Not the seller");
-        escrow.cancelOrderSeller(orderId, reason);
+        escrow.cancelOrderSeller(orderId, REASON);
     }
 
     function testRevertCancelOrderSellerNotSellerSide() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory reason = "test";
         uint256 orderId = 1;
 
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
@@ -454,29 +428,25 @@ contract LeP2PTest is Test {
         // WHEN + THEN
         vm.prank(SELLER);
         vm.expectRevert("Order is on buyer side");
-        escrow.cancelOrderSeller(orderId, reason);
+        escrow.cancelOrderSeller(orderId, REASON);
     }
 
     function testReleaseOrderBuyerOK() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory reason = "test";
         uint256 orderId = 1;
 
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
 
         // WHEN
         vm.expectEmit(true, true, true, true);
-        emit OrderReleased(orderId, reason);
+        emit OrderReleased(orderId, REASON);
 
         vm.prank(BUYER);
-        escrow.releaseOrderBuyer(orderId, reason);
+        escrow.releaseOrderBuyer(orderId, REASON);
 
         //THEN
         (, , , , address orderBuyer, ) = escrow.orders(1);
@@ -485,25 +455,20 @@ contract LeP2PTest is Test {
 
     function testRevertReleaseOrderBuyerOrderNotExist() public {
         // GIVEN
-        string memory reason = "test";
         uint256 orderId = 1;
 
         // WHEN
         vm.prank(BUYER);
         vm.expectRevert("Order does not exist");
-        escrow.releaseOrderBuyer(orderId, reason);
+        escrow.releaseOrderBuyer(orderId, REASON);
     }
 
     function testRevertReleaseOrderBuyerNotBuyer() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory reason = "test";
         uint256 orderId = 1;
 
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
@@ -511,29 +476,25 @@ contract LeP2PTest is Test {
         // WHEN
         vm.prank(SELLER);
         vm.expectRevert("Not the buyer");
-        escrow.releaseOrderBuyer(orderId, reason);
+        escrow.releaseOrderBuyer(orderId, REASON);
     }
 
     function testReleaseOrderArbitratorOK() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory reason = "test";
         uint256 orderId = 1;
 
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
 
         // WHEN
         vm.expectEmit(true, true, true, true);
-        emit OrderReleased(orderId, reason);
+        emit OrderReleased(orderId, REASON);
 
         vm.prank(ARBITRATOR);
-        escrow.releaseOrderArbitrator(orderId, reason);
+        escrow.releaseOrderArbitrator(orderId, REASON);
 
         //THEN
         (, , , , address orderBuyer, ) = escrow.orders(1);
@@ -542,25 +503,20 @@ contract LeP2PTest is Test {
 
     function testRevertReleaseOrderArbitratorOrderNotExist() public {
         // GIVEN
-        string memory reason = "test";
         uint256 orderId = 1;
 
         // WHEN
         vm.prank(BUYER);
         vm.expectRevert("Order does not exist");
-        escrow.releaseOrderArbitrator(orderId, reason);
+        escrow.releaseOrderArbitrator(orderId, REASON);
     }
 
     function testRevertReleaseOrderArbitratorNotArbitrator() public {
         // GIVEN
-        uint256 amount = 1e6;
-        uint256 fiatToTokenExchangeRate = 10;
-        string memory iban = "ES6621000418401234567891";
-        string memory reason = "test";
         uint256 orderId = 1;
 
         vm.prank(SELLER);
-        escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
+        escrow.createOrder(allowedAmount, FIAT_TO_TOKEN_EXCHANGE_RATE, IBAN);
 
         vm.prank(BUYER);
         escrow.reserveOrder(1);
@@ -568,6 +524,6 @@ contract LeP2PTest is Test {
         // WHEN
         vm.prank(SELLER);
         vm.expectRevert("Not an arbitrator");
-        escrow.releaseOrderArbitrator(orderId, reason);
+        escrow.releaseOrderArbitrator(orderId, REASON);
     }
 }

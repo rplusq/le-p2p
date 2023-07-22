@@ -36,6 +36,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     bytes32 public constant ARBITRATOR_ROLE = keccak256("ARBITRATOR_ROLE");
     uint256 public nextOrderId = 1;
     IERC20 public token;
+    uint256 public constant MAX_AMOUNT_NON_VERIFIED = 1000 * 1e6;
 
     /// @dev The World ID instance that will be used for verifying proofs
 	IWorldId internal immutable _worldId;
@@ -89,9 +90,9 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         // Check that the IBAN is not empty
         require(bytes(iban).length > 0, "IBAN must not be empty");
 
-        _volumeCheckKYC();
+        _volumeCheckKYC(msg.sender, userVolume[msg.sender] + amount);
 
-        nextOrderId++;
+        userVolume[msg.sender] += amount;
         
         // Create order to be published
         orders[nextOrderId] = Order({
@@ -102,11 +103,11 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
             buyer: address(0),
             paymentProof: ""
         });
-
-        userVolume[msg.sender] += amount;
         
         // Emit event to be saved in the File Node
         emit OrderCreated(nextOrderId, msg.sender, amount, fiatToTokenExchangeRate, iban);
+
+        nextOrderId++;
 
         // Transfer tokens to this contract to hold them
         token.transferFrom(msg.sender, address(this), amount);
@@ -116,7 +117,8 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         Order storage order = orders[id];
         require(order.seller != address(0), "Order does not exist");
         require(order.buyer == address(0), "Order already has a buyer");
-        _volumeCheckKYC();
+        _volumeCheckKYC(msg.sender, userVolume[msg.sender] + order.amount);
+
         userVolume[msg.sender] += order.amount;
         
         emit OrderReserved(id, msg.sender);
@@ -206,6 +208,10 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         // Emit event of order cancellation to be saved in the File Node
         emit OrderCancelled(id, reason);
         
+
+        userVolume[seller] -= order.amount;
+
+
         // Delete the order
         delete orders[id];
 
@@ -239,7 +245,9 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     }
 
     function _releaseOrder(uint256 id, string memory reason) private {
+        Order storage order = orders[id];
         emit OrderReleased(id, reason);
+        userVolume[order.buyer] -= order.amount;
         delete orders[id].buyer;
     }
 
@@ -274,10 +282,9 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         _;
     }
 
-    function _volumeCheckKYC() view internal {
-        uint256 msgSenderVolume = userVolume[msg.sender];
-        if(msgSenderVolume > 1000* 1e6) {
-            require(_addressToKycId[msg.sender] != 0, "Address needs to be kycd for amounts greater than 1000");
+    function _volumeCheckKYC(address user, uint256 amount) view internal {
+        if(amount > MAX_AMOUNT_NON_VERIFIED) {
+            require(_addressToKycId[user] != 0, "Address needs to be kycd for amounts greater than 1000");
         }
     }
 
