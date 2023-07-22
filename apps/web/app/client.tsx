@@ -5,19 +5,13 @@ import { FC, PropsWithChildren, useState } from "react";
 import { polygonMumbai } from "wagmi/chains";
 import { WagmiConfig, configureChains, createConfig } from "wagmi";
 import { jsonRpcProvider } from "wagmi/providers/jsonRpc";
-import {
-  EthereumClient,
-  w3mConnectors,
-  w3mProvider,
-} from "@web3modal/ethereum";
+import { EthereumClient, w3mConnectors, w3mProvider } from "@web3modal/ethereum";
 import StyledComponentsRegistry from "@/lib/styled-components/sc-registry";
 import { GlobalStyle } from "@/styles/global.styles";
 import { StyledMainApp } from "./styles";
 import { Web3Modal } from "@web3modal/react";
-import WorldCoinLayout from "./worldCoinLayout";
 
-const WEB3_MODAL_PROJECT_ID =
-  process.env.NEXT_PUBLIC_WEB3_MODAL_PROJECT_ID ?? "";
+const WEB3_MODAL_PROJECT_ID = process.env.NEXT_PUBLIC_WEB3_MODAL_PROJECT_ID ?? "";
 const chains = [polygonMumbai];
 
 const { publicClient } = configureChains(chains, [
@@ -46,14 +40,9 @@ const ClientLayout: FC<PropsWithChildren<{}>> = ({ children }) => {
         <StyledComponentsRegistry>
           <GlobalStyle />
           <StyledMainApp>
-            <div className="mobile-container">
-              <WorldCoinLayout>{children}</WorldCoinLayout>
-            </div>
+            <div className="mobile-container">{children}</div>
           </StyledMainApp>
-          <Web3Modal
-            projectId={WEB3_MODAL_PROJECT_ID}
-            ethereumClient={ethereumClient}
-          />
+          <Web3Modal projectId={WEB3_MODAL_PROJECT_ID} ethereumClient={ethereumClient} />
         </StyledComponentsRegistry>
       </WagmiConfig>
     </QueryClientProvider>

@@ -1,34 +1,40 @@
 "use client";
 
 import { Web3Button } from "@web3modal/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAccount, useConnect } from "wagmi";
+import { StyledHome } from "./styles";
+import { IDKitButton } from "@/components/IDKitButton";
 
 export default function Home() {
-  const router = useRouter();
   const { address } = useAccount();
   const { connectors } = useConnect();
   const [connectorsReady, setConnectorsReady] = useState(false);
-
-  useEffect(() => {
-    if (address) router.push("/buy");
-  }, [router, address]);
 
   useEffect(() => {
     setConnectorsReady(connectors.every((connector) => connector.ready));
   }, [connectors]);
 
   return (
-    <main>
+    <StyledHome>
+      <h2 className="text-4xl font-bold tracking-tight my-5">Welcome, Le P2P :)</h2>
+
       {connectorsReady ? (
         <>
-          <p>Home</p>
-          <Web3Button />
+          {address ? (
+            <>
+              <IDKitButton />
+            </>
+          ) : (
+            <>
+              <p className="mb-3">Please connect your wallet:</p>
+              <Web3Button />
+            </>
+          )}
         </>
       ) : (
         <p>Loading...</p>
       )}
-    </main>
+    </StyledHome>
   );
 }

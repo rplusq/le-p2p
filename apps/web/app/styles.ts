@@ -16,3 +16,5 @@ export const StyledMainApp = styled.div`
     border-radius: 20px;
   }
 `;
+
+export const StyledHome = styled.div``;
