@@ -1,7 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-interface IWorldId {
+import "../../src/interfaces/IWorldId.sol";
+
+contract MockWorldId is IWorldId {
 	/// @notice Reverts if the zero-knowledge proof is invalid.
 	/// @param root The of the Merkle tree
 	/// @param groupId The id of the Semaphore group
@@ -17,5 +19,5 @@ interface IWorldId {
 		uint256 nullifierHash,
 		uint256 externalNullifierHash,
 		uint256[8] calldata proof
-	) external view;
+	) external view {}
 }

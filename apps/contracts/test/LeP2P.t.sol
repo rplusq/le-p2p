@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "forge-std/Test.sol";
+import "./mocks/MockWorldId.sol";
 import "../src/LeP2P.sol";
 
 contract USDCMock is ERC20 {
@@ -18,9 +19,10 @@ contract USDCMock is ERC20 {
     }
 }
 
-contract CounterTest is Test {
+contract LeP2PTest is Test {
     LeP2PEscrow public escrow;
     USDCMock public token;
+    MockWorldId public worldId;
     address public constant BUYER = address(1);
     address public constant SELLER = address(2);
     address public constant ARBITRATOR = address(3);
@@ -42,11 +44,15 @@ contract CounterTest is Test {
         vm.label(SELLER, "SELLER");
         vm.label(BUYER, "BUYER");
         token = new USDCMock();
-        escrow = new LeP2PEscrow(IERC20(token));
+        worldId = new MockWorldId();
+        escrow = new LeP2PEscrow(IWorldId(address(worldId)), "appId", "actionId", token);
         token.mint(SELLER, 1e6);
         vm.startPrank(SELLER);
         token.approve(address(escrow), type(uint256).max);
         vm.stopPrank();
+        // register seller and buyer
+        _verifyAndRegisterAddress(SELLER);
+        _verifyAndRegisterAddress(BUYER);
     }
 
     function testCreateOrderOK() public {
@@ -126,14 +132,14 @@ contract CounterTest is Test {
         escrow.createOrder(amount, fiatToTokenExchangeRate, iban);
 
         string memory reason = "test";
-        uint256 contractId = 1;
+        uint256 orderId = 1;
 
         // WHEN
         vm.expectEmit(true, true, true, true);
-        emit OrderCancelled(contractId, reason);
+        emit OrderCancelled(orderId, reason);
 
         vm.prank(SELLER);
-        escrow.cancelOrder(contractId, reason);
+        escrow.cancelOrderUser(orderId, reason);
 
         //THEN
         assertEq(token.balanceOf(SELLER), 1e6);
@@ -142,5 +148,13 @@ contract CounterTest is Test {
         assertEq(escrow.nextOrderId(), 2);
         (address orderSeller, , , , , ) = escrow.orders(1);
         assertEq(orderSeller, address(0));
+    }
+
+    function _verifyAndRegisterAddress(address user) private {
+        vm.startPrank(user);
+        // If nullifier hash is 0, it will fail
+        uint256 nullifierHash = 1;
+        escrow.verifyAndRegister(address(0), 0, nullifierHash, [uint256(1),uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7),uint256(8)]);
+        vm.stopPrank();
     }
 }

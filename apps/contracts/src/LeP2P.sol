@@ -32,7 +32,7 @@ contract LeP2PEscrow is AccessControl {
     IERC20 public token;
 
     /// @dev The World ID instance that will be used for verifying proofs
-	IWorldID internal immutable _worldId;
+	IWorldId internal immutable _worldId;
 
 	/// @dev The contract's external nullifier hash
 	uint256 internal immutable _externalNullifier;
@@ -47,7 +47,7 @@ contract LeP2PEscrow is AccessControl {
 	/// @param appId The World ID app ID
 	/// @param actionId The World ID action ID
 	/// @param token_ The token that will be used for payments
-	constructor(IWorldID worldId_, string memory appId, string memory actionId, IERC20 token_) {
+	constructor(IWorldId worldId_, string memory appId, string memory actionId, IERC20 token_) {
         require(address(worldId_) != address(0), "World ID address cannot be 0");
         require(bytes(appId).length > 0, "App ID cannot be empty");
         require(bytes(actionId).length > 0, "Action ID cannot be empty");
@@ -190,6 +190,7 @@ contract LeP2PEscrow is AccessControl {
 	/// @param nullifierHash The nullifier hash for this proof, preventing double signaling (returned by the JS widget).
 	/// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID (returned by the JS widget).
 	function verifyAndRegister(address signal, uint256 root, uint256 nullifierHash, uint256[8] calldata proof) public {
+        require(nullifierHash != 0, "Nullifier hash cannot be 0");
 		// First, we make sure this person hasn't done this before
 		if (_addressToNullifierHash[msg.sender] != 0) revert AlreadyRegisteredNullifier();
 
