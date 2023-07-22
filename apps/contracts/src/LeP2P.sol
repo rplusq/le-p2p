@@ -26,7 +26,10 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
 
     event OrderCreated(uint256 id, address seller, uint256 amount, uint256 fiatToTokenExchangeRate, string iban);
     event OrderCancelled(uint256 id, string reason);
+    event OrderPayed(uint256 id, address buyer, string paymentProof);
+    event OrderReserved(uint256 id, address buyer);
     event OrderCompleted(uint256 id, address buyer, string paymentProof);
+    event OrderReleased(uint256 id, string reason);
 
     mapping(uint256 => Order) public orders;
     
@@ -115,6 +118,8 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         require(order.buyer == address(0), "Order already has a buyer");
         _volumeCheckKYC();
         userVolume[msg.sender] += order.amount;
+        
+        emit OrderReserved(id, msg.sender);
         order.buyer = msg.sender;
     }
     
@@ -123,50 +128,55 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         require(order.seller != address(0), "Order does not exist");
         require(msg.sender == order.buyer, "Not the buyer");
 
+        emit OrderPayed(id, msg.sender, ipfsHash);
         order.paymentProof = ipfsHash;
     }
     
     function confirmOrder(uint256 id) external {
         Order storage order = orders[id];
+        address buyer = order.buyer;
+        uint256 amount = order.amount;
+
+        require(order.seller != address(0), "Order does not exist");
         require(msg.sender == order.seller, "Not the seller");
+        require(buyer != address(0), "Order has no buyer");
+
+        emit OrderCompleted(id, order.buyer, order.paymentProof);
+
+        delete orders[id];
+
+        token.transfer(buyer, amount);
+    }
+    
+    function arbitrateCompleteOrder(uint256 id) external {
+        Order storage order = orders[id];
+        address buyer = order.buyer;
+        uint256 amount = order.amount;
+
+        require(order.seller != address(0), "Order does not exist");
+        require(hasRole(ARBITRATOR_ROLE, msg.sender), "Not an arbitrator");
         require(order.buyer != address(0), "Order has no buyer");
 
         emit OrderCompleted(id, order.buyer, order.paymentProof);
 
-        token.transfer(order.buyer, order.amount);
-    }
-    
-    function arbitrateCompleteOrder(uint256 id) external {
-        require(hasRole(ARBITRATOR_ROLE, msg.sender), "Not an arbitrator");
+        delete orders[id];
 
-        Order storage order = orders[id];
+        token.transfer(buyer, amount);
 
-        token.transfer(order.buyer, order.amount);
-
-        emit OrderCompleted(id, order.buyer, order.paymentProof);
     }
 
-    function cancelOrderUser(uint256 id, string memory reason) external {
+    function cancelOrderSeller(uint256 id, string memory reason) external {
         // Retrieve the order to be cancelled
         Order storage order = orders[id];
 
         bool isSeller = msg.sender == order.seller;
-        bool isBuyer = msg.sender == order.buyer;
-        bool isOrderOnBuyerSide = order.buyer != address(0);
         bool isOrderOnSellerSide = order.buyer == address(0);
         bool isOrderExistant = order.seller != address(0);
 
         // Check that the order exists
         require(isOrderExistant, "Order does not exist");
-
-        // Check that the sender is the seller when the order has no buyer
-        if (isOrderOnSellerSide) {
-            require(isSeller, "Not the seller");
-        }
-        // Check that the sender is the seller when the order has a buyer
-        else if(isOrderOnBuyerSide) {
-            require(isBuyer, "Not the buyer");
-        }
+        require(isSeller, "Not the seller");
+        require(isOrderOnSellerSide, "Order is on buyer side");
 
         _cancelOrder(id, reason);
     }
@@ -193,14 +203,44 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         address seller = order.seller;
         uint256 amount = order.amount;
 
-         // Delete the order
-        delete orders[id];
-
         // Emit event of order cancellation to be saved in the File Node
         emit OrderCancelled(id, reason);
+        
+        // Delete the order
+        delete orders[id];
 
         // Transfer tokens back to the seller
         token.transfer(seller, amount);
+    }
+
+    
+    function releaseOrderBuyer(uint256 id, string memory reason) external {
+        Order storage order = orders[id];
+
+        bool isBuyer = msg.sender == order.buyer;
+        bool isOrderExistant = order.seller != address(0);
+
+        require(isOrderExistant, "Order does not exist");
+        require(isBuyer, "Not the buyer");
+
+        _releaseOrder(id, reason);
+    }
+
+    function releaseOrderArbitrator(uint256 id, string memory reason) external {
+        Order storage order = orders[id];
+
+        bool isArbitrator = hasRole(ARBITRATOR_ROLE, msg.sender);
+        bool isOrderExistant = order.seller != address(0);
+
+        require(isOrderExistant, "Order does not exist");
+        require(isArbitrator, "Not an arbitrator");
+
+        _releaseOrder(id, reason);
+    }
+
+    function _releaseOrder(uint256 id, string memory reason) private {
+        emit OrderReleased(id, reason);
+        delete orders[id].buyer;
     }
 
     // World ID Verification
@@ -236,7 +276,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
 
     function _volumeCheckKYC() view internal {
         uint256 msgSenderVolume = userVolume[msg.sender];
-        if(msgSenderVolume > 1000e6) {
+        if(msgSenderVolume > 1000* 1e6) {
             require(_addressToKycId[msg.sender] != 0, "Address needs to be kycd for amounts greater than 1000");
         }
     }
