@@ -1,9 +1,11 @@
 export type Offer = {
-  id: number;
+  id: string;
   seller: string;
-  amount: number;
-  fiatToTokenExchangeRate: number;
+  amount: string;
+  fiatToTokenExchangeRate: string;
   iban: string;
-  buyer: string;
-  paymentProof: string;
+  buyer?: string;
+  paymentProof?: string;
+  status: "STANDBY" | "PAID" | "COMPLETED" | "CANCELLED" | "RESERVED";
+  reason?: string;
 };

@@ -1,20 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useEffect, useState } from "react";
+import { useAccount, useWaitForTransaction } from "wagmi";
 import { StyledBuy } from "./styles";
 import OfferCard from "@/components/OfferCard/OfferCard";
 import { useSellOffers } from "./service";
+import { useLeP2PEscrowReserveOrder } from "@/generated";
 
 export default function Buy() {
   const router = useRouter();
   const { address } = useAccount();
-  const { data: sellOffers, isLoading } = useSellOffers();
+  const { data: sellOffers } = useSellOffers();
+  const [reservingOrderId, setReservingOrderId] = useState<string | undefined>();
 
   useEffect(() => {
     if (!address) router.push("/");
   }, [router, address]);
+
+  // Contracts
+  const reserveCall = useLeP2PEscrowReserveOrder({
+    onError: () => setReservingOrderId(undefined),
+  });
+  const waitingReserve = useWaitForTransaction({
+    hash: reserveCall.data?.hash as `0x${string}`,
+    onSuccess: () => {
+      router.push("/activity");
+      setReservingOrderId(undefined);
+    },
+  });
+
+  const handleReserveOffer = (offerId: string) => {
+    setReservingOrderId(offerId);
+    reserveCall.write({
+      args: [BigInt(offerId)],
+    });
+  };
 
   return (
     <StyledBuy>
@@ -22,7 +43,13 @@ export default function Buy() {
 
       <div className="offers">
         {sellOffers?.map((sellOffer) => (
-          <OfferCard key={sellOffer.id} offer={sellOffer} />
+          <div key={sellOffer.id} onClick={!reservingOrderId ? () => handleReserveOffer(sellOffer.id) : undefined}>
+            <OfferCard
+              noActions={!!reservingOrderId}
+              offer={sellOffer}
+              isReserving={!!reservingOrderId && reservingOrderId === sellOffer.id}
+            />
+          </div>
         ))}
       </div>
     </StyledBuy>

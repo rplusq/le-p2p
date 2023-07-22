@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useWaitForTransaction } from "wagmi";
 import { StyledActivity } from "./styles";
 import OfferCard from "@/components/OfferCard/OfferCard";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -13,47 +13,90 @@ import { useActiveOrder } from "./service";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/Input";
 import { web3StorageClient } from "@/lib/web3storage";
+import { TOKEN_DECIMALS } from "@/lib/constans";
+import { formatUnits } from "viem";
+import { useLeP2PEscrowConfirmOrder, useLeP2PEscrowReleaseOrderBuyer, useLeP2PEscrowSubmitPayment } from "@/generated";
 
 export default function Activity() {
   const router = useRouter();
   const { address } = useAccount();
-  const { data: activeOrder } = useActiveOrder();
-  const [loading, setLoading] = useState<boolean>(false);
-
+  const { data: activeOrder, refetch } = useActiveOrder();
+  const [uploadingFile, setUploadingFile] = useState<boolean>(false);
   const [proofOfPaymentFile, setProofOfPaymentFile] = useState<File | undefined>();
 
   useEffect(() => {
     if (!address) router.push("/");
   }, [router, address]);
 
+  // Contracts
+  const releaseCall = useLeP2PEscrowReleaseOrderBuyer();
+  const waitingRelease = useWaitForTransaction({
+    hash: releaseCall.data?.hash as `0x${string}`,
+    onSuccess: () => router.push("/buy"),
+  });
+
+  const paymentReceivedCall = useLeP2PEscrowConfirmOrder();
+  const waitingPaymentReceived = useWaitForTransaction({
+    hash: paymentReceivedCall.data?.hash as `0x${string}`,
+    onSuccess: () => refetch(),
+  });
+
+  const paymentSentCall = useLeP2PEscrowSubmitPayment();
+  const waitingPaymentSent = useWaitForTransaction({
+    hash: paymentSentCall.data?.hash as `0x${string}`,
+    onSuccess: () => refetch(),
+  });
+
+  const checkWallet = paymentSentCall.isLoading || paymentReceivedCall.isLoading || releaseCall.isLoading;
+  const isLoading =
+    waitingRelease.isLoading || waitingPaymentReceived.isLoading || waitingPaymentSent.isLoading || checkWallet || uploadingFile;
+
+  console.log(isLoading);
+
   const handleOnChangeProof = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProofOfPaymentFile(e.target.files?.[0]);
   };
 
   const handlePaymentDone = async () => {
+    if (!activeOrder) return;
     if (!proofOfPaymentFile) return;
-    setLoading(true);
+    setUploadingFile(true);
 
     try {
-      // TODO:
-      // Upload to IPFS
+      // Upload to IPFS and call contract
       const proofCid = await web3StorageClient.put([proofOfPaymentFile], {});
-      console.log(proofCid);
-      // Call contract
+      paymentSentCall.write({
+        args: [BigInt(activeOrder.id), proofCid],
+      });
     } catch (error) {
       console.log(error);
     } finally {
-      setLoading(false);
+      setUploadingFile(false);
     }
   };
 
   const handlePaymentReceived = () => {
-    // TODO:
-    // Call contract
+    if (!activeOrder) return;
+
+    // Call contract to change status
+    paymentReceivedCall.write({
+      args: [BigInt(activeOrder.id)],
+    });
+  };
+
+  const handleCloseOrder = () => {
+    if (!activeOrder) return;
+    // Call contract and close order
+    releaseCall.write({
+      args: [BigInt(activeOrder.id), "released by buyer"],
+    });
   };
 
   const buyerView = () => {
     if (!activeOrder) return null;
+
+    const amountFormatted = +formatUnits(BigInt(activeOrder.amount), TOKEN_DECIMALS);
+    const exchangeRateFormatted = +formatUnits(BigInt(activeOrder.fiatToTokenExchangeRate), TOKEN_DECIMALS);
 
     // If paymentProof is set, buyer is waiting for seller to confirm payment
     const waiting = !!activeOrder?.paymentProof;
@@ -85,10 +128,13 @@ export default function Activity() {
     } else {
       return (
         <>
+          <Button variant="destructive" className="w-full mt-3" onClick={handleCloseOrder} disabled={isLoading}>
+            {releaseCall.isLoading || waitingRelease.isLoading ? <>Closing order...</> : <>Cancel order</>}
+          </Button>
+
           <p className="mt-5">
-            Please, you need to send{" "}
-            <strong>{((activeOrder?.amount ?? 0) / (activeOrder?.fiatToTokenExchangeRate ?? 0)).toFixed(2)}€</strong> to the
-            payment method listed below and upload the proof of payment:
+            Please, you need to send <strong>{(amountFormatted / exchangeRateFormatted).toFixed(2)}€</strong> to the payment
+            method listed below and upload the proof of payment:
           </p>
 
           <Card className="mt-3">
@@ -111,13 +157,15 @@ export default function Activity() {
 
           <div className="grid w-full max-w-sm items-center gap-1.5 mt-4">
             <Label htmlFor="picture">Proof of payment</Label>
-            <Input id="picture" type="file" onChange={handleOnChangeProof} disabled={loading} />
+            <Input id="picture" type="file" onChange={handleOnChangeProof} disabled={isLoading} />
           </div>
 
-          <Button variant="default" className="w-full mt-5" disabled={!proofOfPaymentFile || loading} onClick={handlePaymentDone}>
+          <br />
+
+          <Button variant="default" className="w-full" disabled={!proofOfPaymentFile || isLoading} onClick={handlePaymentDone}>
             {proofOfPaymentFile ? (
               <>
-                {loading ? (
+                {isLoading ? (
                   <>Uploading and executing...</>
                 ) : (
                   <>
@@ -137,6 +185,9 @@ export default function Activity() {
 
   const sellerView = () => {
     if (!activeOrder) return null;
+
+    const amountFormatted = +formatUnits(BigInt(activeOrder.amount), TOKEN_DECIMALS);
+    const exchangeRateFormatted = +formatUnits(BigInt(activeOrder.fiatToTokenExchangeRate), TOKEN_DECIMALS);
 
     // If paymentProof is not set, seller is waiting for buyer to make the payment
     const waiting = !activeOrder?.paymentProof;
@@ -170,8 +221,7 @@ export default function Activity() {
         <>
           <p className="mt-5">
             The buyer already paid you to your IBAN account. Please, confirm you received{" "}
-            <strong>{((activeOrder?.amount ?? 0) / (activeOrder?.fiatToTokenExchangeRate ?? 0)).toFixed(2)}€</strong> to finish
-            the transaction.
+            <strong>{(amountFormatted / exchangeRateFormatted).toFixed(2)}€</strong> to finish the transaction.
           </p>
 
           <Card className="mt-3">
@@ -192,9 +242,9 @@ export default function Activity() {
             </CardContent>
           </Card>
 
-          <Button variant="default" className="w-full mt-5" onClick={handlePaymentReceived}>
+          <Button variant="default" className="w-full mt-5" onClick={handlePaymentReceived} disabled={isLoading}>
             <CheckIcon className="mr-2" />
-            Payment received
+            {isLoading ? <>Confirming payment...</> : <>Confirm payment</>}
           </Button>
         </>
       );
@@ -208,7 +258,7 @@ export default function Activity() {
       {activeOrder ? (
         <>
           <OfferCard offer={activeOrder} noActions />
-          {address === activeOrder.buyer ? buyerView() : sellerView()}
+          {address?.toLowerCase() === activeOrder.buyer?.toLowerCase() ? buyerView() : sellerView()}
         </>
       ) : (
         <div>You have no active order</div>
