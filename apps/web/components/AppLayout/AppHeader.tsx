@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { StyledAppHeader } from "./styles";
 import { useAccount, useBalance } from "wagmi";
 import { USDC_TOKEN_ADDRESS } from "@/lib/constans";
+import millify from "millify";
 
 export default function AppHeader() {
   const { address } = useAccount();
@@ -31,7 +32,7 @@ export default function AppHeader() {
             fill="#fff"
           />
         </svg>
-        <span className="font-bold ml-2">{usdcBalance.data?.formatted}</span>
+        <span className="font-bold ml-2">{millify(+(usdcBalance.data?.formatted ?? 0))}</span>
       </Button>
       <Web3Button />
     </StyledAppHeader>
