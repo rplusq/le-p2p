@@ -8,4 +8,5 @@ export type Offer = {
   paymentProof?: string;
   status: "STANDBY" | "PAID" | "COMPLETED" | "CANCELLED" | "RESERVED";
   reason?: string;
+  isXMTPEnabled?: boolean;
 };
