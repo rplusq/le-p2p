@@ -1,5 +1,8 @@
 "use client";
 
+import { useLazyQuery } from "@airstack/airstack-react";
+import UNIVERSAL_RESOLVER from "../lib/graphql/resolve";
+
 import { Web3Button } from "@web3modal/react";
 import { useEffect, useState } from "react";
 import { useAccount, useConnect } from "wagmi";
@@ -33,6 +36,29 @@ export default function Home() {
   useEffect(() => {
     setConnectorsReady(connectors.every((connector) => connector.ready));
   }, [connectors]);
+
+  const [resolveIdentity, { data, loading }] = useLazyQuery(
+    UNIVERSAL_RESOLVER,
+    {},
+    { cache: false }
+  );
+
+  // return (
+  //   <>
+  //     <button
+  //       onClick={() => {
+  //         resolveIdentity({
+  //           address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+  //         });
+  //       }}
+  //     >
+  //       Resolve
+  //     </button>
+  //     {!!address && (
+  //       <button onClick={async function () {}}>Connect to XMTP</button>
+  //     )}
+  //   </>
+  // );
 
   return (
     <StyledHome>

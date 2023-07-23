@@ -13,12 +13,19 @@ type OfferCardProps = {
   isReserving?: boolean;
 };
 
-export default function OfferCard({ offer, isReserving = false, noActions = false }: OfferCardProps) {
+export default function OfferCard({
+  offer,
+  isReserving = false,
+  noActions = false,
+}: OfferCardProps) {
   const { address } = useAccount();
   const ownOffer = address?.toLowerCase() === offer.seller.toLowerCase();
 
   const amountFormatted = formatUnits(BigInt(offer.amount), TOKEN_DECIMALS);
-  const exchangeRateFormatted = formatUnits(BigInt(offer.fiatToTokenExchangeRate), TOKEN_DECIMALS);
+  const exchangeRateFormatted = formatUnits(
+    BigInt(offer.fiatToTokenExchangeRate),
+    TOKEN_DECIMALS
+  );
 
   const handleCreateOrder = () => {
     // TODO:
@@ -33,7 +40,8 @@ export default function OfferCard({ offer, isReserving = false, noActions = fals
       ownOffer={ownOffer}
       noActions={noActions}
       disabled={false}
-      onClick={handleCreateOrder}>
+      onClick={handleCreateOrder}
+    >
       <Card className="offer-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
@@ -41,7 +49,9 @@ export default function OfferCard({ offer, isReserving = false, noActions = fals
           </CardTitle>
           {ownOffer ? (
             <>
-              <span className="text-sm  font-bold text-pink-500 mb-5">YOUR OFFER</span>
+              <span className="text-sm  font-bold text-pink-500 mb-5">
+                YOUR OFFER
+              </span>
             </>
           ) : (
             <svg
@@ -54,7 +64,8 @@ export default function OfferCard({ offer, isReserving = false, noActions = fals
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="feather feather-refresh-cw">
+              className="feather feather-refresh-cw"
+            >
               <polyline points="23 4 23 10 17 10"></polyline>
               <polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -67,7 +78,8 @@ export default function OfferCard({ offer, isReserving = false, noActions = fals
             <span className="text-xs text-muted-foreground ml-2">per USDC</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {(+amountFormatted / +exchangeRateFormatted).toFixed(2)}€ per {(+amountFormatted).toFixed(2)}USDC
+            {(+amountFormatted / +exchangeRateFormatted).toFixed(2)}€ per{" "}
+            {(+amountFormatted).toFixed(2)}USDC
           </p>
         </CardContent>
       </Card>
