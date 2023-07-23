@@ -43,23 +43,6 @@ export default function Home() {
     { cache: false }
   );
 
-  // return (
-  //   <>
-  //     <button
-  //       onClick={() => {
-  //         resolveIdentity({
-  //           address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-  //         });
-  //       }}
-  //     >
-  //       Resolve
-  //     </button>
-  //     {!!address && (
-  //       <button onClick={async function () {}}>Connect to XMTP</button>
-  //     )}
-  //   </>
-  // );
-
   return (
     <StyledHome>
       <h2 className="text-4xl font-bold tracking-tight my-5">Welcome, Le P2P :)</h2>
