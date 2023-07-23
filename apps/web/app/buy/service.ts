@@ -30,57 +30,55 @@ const getAllSellOffers = async (): Promise<Offer[]> => {
   });
   const dataJson = await resTest.json();
 
-  const sellers = [
-    ...new Set(dataJson.data.offers.map((offer: Offer) => offer.seller)),
-  ];
+  // const sellers = [...new Set(dataJson.data.offers.map((offer: Offer) => offer.seller))];
 
-  const promises = sellers.map(async (seller) => {
-    const res = await fetch("https://api.airstack.xyz/gql", {
-      method: "POST",
-      body: JSON.stringify({
-        query: `query MyQuery($seller: Identity!) {
-          Wallet(input: {identity: $seller, blockchain: ethereum}) {
-            socials {
-              dappName
-              profileName
-            }
-            domains {
-              name
-            }
-            primaryDomain {
-              name
-            }
-            addresses
-            xmtp {
-              isXMTPEnabled
-            }
-          }
-        }
-        `,
-        variables: {
-          seller,
-        },
-      }),
-      headers: {
-        "Content-Type": "application/json",
-        authorization: process.env.NEXT_PUBLIC_AIRSTACK_API_KEY ?? "",
-      },
-    });
+  // const promises = sellers.map(async (seller) => {
+  //   const res = await fetch("https://api.airstack.xyz/gql", {
+  //     method: "POST",
+  //     body: JSON.stringify({
+  //       query: `query MyQuery($seller: Identity!) {
+  //         Wallet(input: {identity: $seller, blockchain: ethereum}) {
+  //           socials {
+  //             dappName
+  //             profileName
+  //           }
+  //           domains {
+  //             name
+  //           }
+  //           primaryDomain {
+  //             name
+  //           }
+  //           addresses
+  //           xmtp {
+  //             isXMTPEnabled
+  //           }
+  //         }
+  //       }
+  //       `,
+  //       variables: {
+  //         seller,
+  //       },
+  //     }),
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //       authorization: process.env.NEXT_PUBLIC_AIRSTACK_API_KEY ?? "",
+  //     },
+  //   });
 
-    const airstackDataJson = await res.json();
-    const isXMTPEnabled = airstackDataJson.data.Wallet.xmtp[0]?.isXMTPEnabled;
-    return { seller, isXMTPEnabled };
-  });
+  //   const airstackDataJson = await res.json();
+  //   const isXMTPEnabled = airstackDataJson.data.Wallet.xmtp[0]?.isXMTPEnabled;
+  //   return { seller, isXMTPEnabled };
+  // });
 
-  const results = await Promise.all(promises);
-  const sellerDict: SellerStatus = {};
-  results.forEach((result) => {
-    sellerDict[result.seller as any] = result.isXMTPEnabled;
-  });
+  // const results = await Promise.all(promises);
+  // const sellerDict: SellerStatus = {};
+  // results.forEach((result) => {
+  //   sellerDict[result.seller as any] = result.isXMTPEnabled;
+  // });
 
-  dataJson.data.offers.forEach((offer: Offer) => {
-    offer.isXMTPEnabled = sellerDict[offer.seller];
-  });
+  // dataJson.data.offers.forEach((offer: Offer) => {
+  //   offer.isXMTPEnabled = sellerDict[offer.seller];
+  // });
 
   return dataJson.data.offers;
 };
