@@ -9,7 +9,7 @@ export default defineConfig({
       deployments: {
         LeP2PEscrow: {
           [chains.polygonMumbai.id]:
-            "0xb50904f66abe09896f259448a9c9bf783bb4cb77",
+            "0xD9a2603aD0be058A5e95172ba542d68E5eE1eb5E",
         },
         USDCMock: {
           [chains.polygonMumbai.id]:

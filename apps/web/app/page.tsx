@@ -13,12 +13,19 @@ import {
 export default function Home() {
   const { address } = useAccount();
   const { connectors } = useConnect();
-  const { data: isVerifiedHuman, status: verifiedHumanQueryStatus } =
-    useLeP2PEscrowIsVerifiedHuman({
-      enabled: !!address,
-    });
+  const {
+    data: isVerifiedHuman,
+    status: verifiedHumanQueryStatus,
+    refetch: refetchIsVerifiedHuman,
+  } = useLeP2PEscrowIsVerifiedHuman({
+    enabled: !!address,
+    account: address,
+  });
   const { data: isKycVerified, status: kycVerifiedQueryStatus } =
-    useLeP2PEscrowIsKycVerified({});
+    useLeP2PEscrowIsKycVerified({
+      enabled: !!address,
+      account: address,
+    });
 
   const [connectorsReady, setConnectorsReady] = useState(false);
 
@@ -39,7 +46,7 @@ export default function Home() {
               {verifiedHumanQueryStatus === "success" && !isVerifiedHuman && (
                 <>
                   <p className="mb-3">Only verified humans can use Le P2P.</p>
-                  <IDKitButton />
+                  <IDKitButton refetch={refetchIsVerifiedHuman} />
                 </>
               )}
               {kycVerifiedQueryStatus === "success" && !isKycVerified && (

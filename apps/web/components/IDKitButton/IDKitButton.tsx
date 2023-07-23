@@ -2,13 +2,20 @@
 
 import { IDKitWidget, CredentialType } from "@worldcoin/idkit";
 import { Button } from "../ui/button";
-import { useAccount } from "wagmi";
+import { useAccount, useWaitForTransaction } from "wagmi";
 import { useLeP2PEscrowVerifyAndRegister } from "@/generated";
 import { decodeAbiParameters } from "viem";
 
-export const IDKitButton = () => {
+export const IDKitButton = ({ refetch }: { refetch: any }) => {
   const { address } = useAccount();
-  const { write } = useLeP2PEscrowVerifyAndRegister();
+  const verifyAndRegisterCall = useLeP2PEscrowVerifyAndRegister();
+  useWaitForTransaction({
+    hash: verifyAndRegisterCall.data?.hash,
+    enabled: !!verifyAndRegisterCall.data?.hash,
+    onSuccess: () => {
+      refetch();
+    },
+  });
 
   const onSuccess = async (proof: any) => {
     if (!address) return;
@@ -18,7 +25,7 @@ export const IDKitButton = () => {
       proof.proof
     )[0];
 
-    write({
+    verifyAndRegisterCall.write({
       args: [
         address,
         BigInt(proof.merkle_root),
