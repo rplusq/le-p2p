@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/Input";
 import { web3StorageClient } from "@/lib/web3storage";
 import { TOKEN_DECIMALS } from "@/lib/constans";
 import { formatUnits } from "viem";
+import OpenIcon from "@mui/icons-material/OpenInNew";
 import { useLeP2PEscrowConfirmOrder, useLeP2PEscrowReleaseOrderBuyer, useLeP2PEscrowSubmitPayment } from "@/generated";
 
 export default function Activity() {
@@ -32,26 +33,30 @@ export default function Activity() {
   const releaseCall = useLeP2PEscrowReleaseOrderBuyer();
   const waitingRelease = useWaitForTransaction({
     hash: releaseCall.data?.hash as `0x${string}`,
-    onSuccess: () => router.push("/buy"),
+    onSuccess: () => {
+      router.push("/buy");
+    },
   });
 
   const paymentReceivedCall = useLeP2PEscrowConfirmOrder();
   const waitingPaymentReceived = useWaitForTransaction({
     hash: paymentReceivedCall.data?.hash as `0x${string}`,
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+    },
   });
 
   const paymentSentCall = useLeP2PEscrowSubmitPayment();
   const waitingPaymentSent = useWaitForTransaction({
     hash: paymentSentCall.data?.hash as `0x${string}`,
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+    },
   });
 
   const checkWallet = paymentSentCall.isLoading || paymentReceivedCall.isLoading || releaseCall.isLoading;
   const isLoading =
     waitingRelease.isLoading || waitingPaymentReceived.isLoading || waitingPaymentSent.isLoading || checkWallet || uploadingFile;
-
-  console.log(isLoading);
 
   const handleOnChangeProof = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProofOfPaymentFile(e.target.files?.[0]);
@@ -166,7 +171,7 @@ export default function Activity() {
             {proofOfPaymentFile ? (
               <>
                 {isLoading ? (
-                  <>Uploading and executing...</>
+                  <>Uploading proof and executing...</>
                 ) : (
                   <>
                     <CheckIcon className="mr-2" />
@@ -185,6 +190,10 @@ export default function Activity() {
 
   const sellerView = () => {
     if (!activeOrder) return null;
+
+    const handleViewProof = () => {
+      window.open(`https://cloudflare-ipfs.com/ipfs/${activeOrder.paymentProof}`);
+    };
 
     const amountFormatted = +formatUnits(BigInt(activeOrder.amount), TOKEN_DECIMALS);
     const exchangeRateFormatted = +formatUnits(BigInt(activeOrder.fiatToTokenExchangeRate), TOKEN_DECIMALS);
@@ -241,6 +250,11 @@ export default function Activity() {
               </div>
             </CardContent>
           </Card>
+
+          <Button variant="outline" className="mt-5" onClick={handleViewProof} disabled={isLoading}>
+            <OpenIcon className="mr-2" />
+            View payment proof
+          </Button>
 
           <Button variant="default" className="w-full mt-5" onClick={handlePaymentReceived} disabled={isLoading}>
             <CheckIcon className="mr-2" />

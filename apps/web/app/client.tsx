@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "react-query";
-import { FC, PropsWithChildren, useState } from "react";
+import { FC, PropsWithChildren } from "react";
 import { polygonMumbai } from "wagmi/chains";
 import { WagmiConfig, configureChains, createConfig } from "wagmi";
 import { jsonRpcProvider } from "wagmi/providers/jsonRpc";
@@ -10,17 +10,20 @@ import StyledComponentsRegistry from "@/lib/styled-components/sc-registry";
 import { GlobalStyle } from "@/styles/global.styles";
 import { StyledMainApp } from "./styles";
 import { Web3Modal } from "@web3modal/react";
+import { Toaster } from "@/components/ui/toaster";
+
+export const queryClient = new QueryClient();
 
 const WEB3_MODAL_PROJECT_ID = process.env.NEXT_PUBLIC_WEB3_MODAL_PROJECT_ID ?? "";
 const chains = [polygonMumbai];
 
 const { publicClient } = configureChains(chains, [
-  w3mProvider({ projectId: WEB3_MODAL_PROJECT_ID }),
   jsonRpcProvider({
     rpc: () => ({
       http: process.env.NEXT_PUBLIC_QUICKNODE_HTTP_PROVIDER_URL ?? "",
     }),
   }),
+  w3mProvider({ projectId: WEB3_MODAL_PROJECT_ID }),
 ]);
 
 export const wagmiConfig = createConfig({
@@ -32,8 +35,6 @@ export const wagmiConfig = createConfig({
 export const ethereumClient = new EthereumClient(wagmiConfig, chains);
 
 const ClientLayout: FC<PropsWithChildren<{}>> = ({ children }) => {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
     <QueryClientProvider client={queryClient}>
       <WagmiConfig config={wagmiConfig}>
@@ -43,6 +44,7 @@ const ClientLayout: FC<PropsWithChildren<{}>> = ({ children }) => {
             <div className="mobile-container">{children}</div>
           </StyledMainApp>
           <Web3Modal projectId={WEB3_MODAL_PROJECT_ID} ethereumClient={ethereumClient} />
+          <Toaster />
         </StyledComponentsRegistry>
       </WagmiConfig>
     </QueryClientProvider>

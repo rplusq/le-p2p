@@ -14,17 +14,19 @@ import { leP2PEscrowAddress, useLeP2PEscrowCreateOrder, useUsdcMockAllowance, us
 import { parseUnits } from "viem";
 import { TOKEN_DECIMALS } from "@/lib/constans";
 import { polygonMumbai } from "wagmi/chains";
+import { useToast } from "@/components/ui/use-toast";
 
 const sellFormSchema = z.object({
-  amount: z.string(),
-  fiatToTokenExchangeRate: z.string(),
-  iban: z.string(),
+  amount: z.string().min(1),
+  fiatToTokenExchangeRate: z.string().min(1),
+  iban: z.string().min(1),
 });
 
 type SellFormValues = z.infer<typeof sellFormSchema>;
 
 export default function Sell() {
   const router = useRouter();
+  const { toast } = useToast();
   const { address } = useAccount();
   const { data: tokenAllowance } = useUsdcMockAllowance({ account: address });
 
@@ -48,7 +50,17 @@ export default function Sell() {
     onSuccess: () => handleCreateOffer(),
   });
 
-  const createOfferCall = useLeP2PEscrowCreateOrder();
+  const createOfferCall = useLeP2PEscrowCreateOrder({
+    onError: (error) => {
+      if (error.message.includes("Address needs to be kycd for amounts greater than 1000")) {
+        toast({
+          variant: "destructive",
+          title: "Uh oh! Something went wrong.",
+          description: "You need polygon ID for creating offers greater than 1000 USDC.",
+        });
+      }
+    },
+  });
   const waitingCreateOffer = useWaitForTransaction({
     hash: createOfferCall.data?.hash as `0x${string}`,
     onSuccess: () => router.push("/buy"),
@@ -136,7 +148,7 @@ export default function Sell() {
             )}
           />
 
-          <Button disabled={isLoading} variant="default" className="w-full mt-5">
+          <Button disabled={isLoading || !form.formState.isValid} variant="default" className="w-full mt-5">
             {isLoading
               ? checkWallet
                 ? "Check your wallet..."

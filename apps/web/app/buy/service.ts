@@ -31,7 +31,7 @@ const getAllSellOffers = async (): Promise<Offer[]> => {
 
 export const useSellOffers = (): UseQueryResult<Offer[]> => {
   const queryResult = useQuery({
-    queryKey: ["sell-offers"],
+    queryKey: ["offers"],
     queryFn: () => getAllSellOffers(),
     refetchOnWindowFocus: true,
     refetchInterval: 5000,
