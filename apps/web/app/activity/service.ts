@@ -43,7 +43,7 @@ export const useActiveOrder = (): UseQueryResult<Offer | undefined> => {
   const { address } = useAccount();
 
   const queryResult = useQuery({
-    queryKey: ["active-order", address],
+    queryKey: ["active-order"],
     queryFn: () => getActiveOrderForUser(address),
     enabled: !!address,
     refetchOnWindowFocus: true,

@@ -42,15 +42,19 @@ export default function Buy() {
       <h2 className="text-4xl font-bold tracking-tight">Buy USDC</h2>
 
       <div className="offers">
-        {sellOffers?.map((sellOffer) => (
-          <div key={sellOffer.id} onClick={!reservingOrderId ? () => handleReserveOffer(sellOffer.id) : undefined}>
-            <OfferCard
-              noActions={!!reservingOrderId}
-              offer={sellOffer}
-              isReserving={!!reservingOrderId && reservingOrderId === sellOffer.id}
-            />
-          </div>
-        ))}
+        {sellOffers?.map((sellOffer) => {
+          const ownOffer = address?.toLowerCase() === sellOffer.seller.toLowerCase();
+
+          return (
+            <div key={sellOffer.id} onClick={!reservingOrderId && !ownOffer ? () => handleReserveOffer(sellOffer.id) : undefined}>
+              <OfferCard
+                noActions={!!reservingOrderId}
+                offer={sellOffer}
+                isReserving={(!!reservingOrderId || waitingReserve.isLoading) && reservingOrderId === sellOffer.id}
+              />
+            </div>
+          );
+        })}
       </div>
     </StyledBuy>
   );
