@@ -6,9 +6,9 @@ dataSources:
     name: LeP2P
     network: mumbai
     source:
-      address: "0x9B63d91850694D66a7B10F3a0AA2AF74F4AA5631"
+      address: "0xD9a2603aD0be058A5e95172ba542d68E5eE1eb5E"
       abi: LeP2P
-      startBlock: 38204464
+      startBlock: 38212452
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
