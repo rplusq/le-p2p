@@ -36,6 +36,10 @@
     --radius: 0.5rem;
     --gray-border: #d3d3d3;
   }
+
+  nextjs-portal {
+    display: none;
+  }
 }
 
 @layer base {

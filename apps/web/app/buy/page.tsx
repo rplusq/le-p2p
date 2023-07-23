@@ -28,6 +28,7 @@ export default function Buy() {
       router.push("/activity");
       setReservingOrderId(undefined);
     },
+    confirmations: 2,
   });
 
   const handleReserveOffer = (offerId: string) => {

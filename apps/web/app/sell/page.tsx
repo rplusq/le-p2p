@@ -48,6 +48,7 @@ export default function Sell() {
   const waitingApprove = useWaitForTransaction({
     hash: approveCall.data?.hash as `0x${string}`,
     onSuccess: () => handleCreateOffer(),
+    confirmations: 2,
   });
 
   const createOfferCall = useLeP2PEscrowCreateOrder({

@@ -33,6 +33,7 @@ export default function Activity() {
   const releaseCall = useLeP2PEscrowReleaseOrderBuyer();
   const waitingRelease = useWaitForTransaction({
     hash: releaseCall.data?.hash as `0x${string}`,
+    confirmations: 2,
     onSuccess: () => {
       router.push("/buy");
     },
@@ -41,6 +42,7 @@ export default function Activity() {
   const paymentReceivedCall = useLeP2PEscrowConfirmOrder();
   const waitingPaymentReceived = useWaitForTransaction({
     hash: paymentReceivedCall.data?.hash as `0x${string}`,
+    confirmations: 2,
     onSuccess: () => {
       refetch();
     },
@@ -49,6 +51,7 @@ export default function Activity() {
   const paymentSentCall = useLeP2PEscrowSubmitPayment();
   const waitingPaymentSent = useWaitForTransaction({
     hash: paymentSentCall.data?.hash as `0x${string}`,
+    confirmations: 2,
     onSuccess: () => {
       refetch();
     },
