@@ -37,4 +37,4 @@ We also store the payment through Web3 Storage, tapping Filecoin and IPFS
 
 ## Collaborators
 
-@fonstack @ReynaldoQuintero @rplusq
+Born in ETH Global Paris 2023 🥐 Hackers: @fonstack @ReynaldoQuintero @rplusq
