@@ -71,7 +71,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
 		_worldcoinExternalNullifier = abi.encodePacked(abi.encodePacked(appId).hashToField(), actionId).hashToField();
 		_worldId = worldId_;
         token = token_;
-        _setupRole(ARBITRATOR_ROLE, msg.sender);
+        _setupRole(ARBITRATOR_ROLE, _msgSender());
 	}
 
     /**
@@ -90,13 +90,13 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         // Check that the IBAN is not empty
         require(bytes(iban).length > 0, "IBAN must not be empty");
 
-        _volumeCheckKYC(msg.sender, userVolume[msg.sender] + amount);
+        _volumeCheckKYC(_msgSender(), userVolume[_msgSender()] + amount);
 
-        userVolume[msg.sender] += amount;
+        userVolume[_msgSender()] += amount;
         
         // Create order to be published
         orders[nextOrderId] = Order({
-            seller: msg.sender,
+            seller: _msgSender(),
             amount: amount,
             fiatToTokenExchangeRate: fiatToTokenExchangeRate,
             iban: iban,
@@ -105,32 +105,32 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         });
         
         // Emit event to be saved in the File Node
-        emit OrderCreated(nextOrderId, msg.sender, amount, fiatToTokenExchangeRate, iban);
+        emit OrderCreated(nextOrderId, _msgSender(), amount, fiatToTokenExchangeRate, iban);
 
         nextOrderId++;
 
         // Transfer tokens to this contract to hold them
-        token.transferFrom(msg.sender, address(this), amount);
+        token.transferFrom(_msgSender(), address(this), amount);
     }
     
     function reserveOrder(uint256 id) onlyVerifiedHuman external {
         Order storage order = orders[id];
         require(order.seller != address(0), "Order does not exist");
         require(order.buyer == address(0), "Order already has a buyer");
-        _volumeCheckKYC(msg.sender, userVolume[msg.sender] + order.amount);
+        _volumeCheckKYC(_msgSender(), userVolume[_msgSender()] + order.amount);
 
-        userVolume[msg.sender] += order.amount;
+        userVolume[_msgSender()] += order.amount;
         
-        emit OrderReserved(id, msg.sender);
-        order.buyer = msg.sender;
+        emit OrderReserved(id, _msgSender());
+        order.buyer = _msgSender();
     }
     
     function submitPayment(uint256 id, string memory ipfsHash) external {
         Order storage order = orders[id];
         require(order.seller != address(0), "Order does not exist");
-        require(msg.sender == order.buyer, "Not the buyer");
+        require(_msgSender() == order.buyer, "Not the buyer");
 
-        emit OrderPayed(id, msg.sender, ipfsHash);
+        emit OrderPayed(id, _msgSender(), ipfsHash);
         order.paymentProof = ipfsHash;
     }
     
@@ -140,7 +140,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         uint256 amount = order.amount;
 
         require(order.seller != address(0), "Order does not exist");
-        require(msg.sender == order.seller, "Not the seller");
+        require(_msgSender() == order.seller, "Not the seller");
         require(buyer != address(0), "Order has no buyer");
 
         emit OrderCompleted(id, order.buyer, order.paymentProof);
@@ -156,7 +156,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         uint256 amount = order.amount;
 
         require(order.seller != address(0), "Order does not exist");
-        require(hasRole(ARBITRATOR_ROLE, msg.sender), "Not an arbitrator");
+        require(hasRole(ARBITRATOR_ROLE, _msgSender()), "Not an arbitrator");
         require(order.buyer != address(0), "Order has no buyer");
 
         emit OrderCompleted(id, order.buyer, order.paymentProof);
@@ -171,7 +171,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         // Retrieve the order to be cancelled
         Order storage order = orders[id];
 
-        bool isSeller = msg.sender == order.seller;
+        bool isSeller = _msgSender() == order.seller;
         bool isOrderOnSellerSide = order.buyer == address(0);
         bool isOrderExistant = order.seller != address(0);
 
@@ -187,7 +187,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         // Retrieve the order to be cancelled
         Order storage order = orders[id];
 
-        bool isArbitrator = hasRole(ARBITRATOR_ROLE, msg.sender);
+        bool isArbitrator = hasRole(ARBITRATOR_ROLE, _msgSender());
         bool isOrderExistant = order.seller != address(0);
 
         // Check that the order exists
@@ -223,7 +223,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     function releaseOrderBuyer(uint256 id, string memory reason) external {
         Order storage order = orders[id];
 
-        bool isBuyer = msg.sender == order.buyer;
+        bool isBuyer = _msgSender() == order.buyer;
         bool isOrderExistant = order.seller != address(0);
 
         require(isOrderExistant, "Order does not exist");
@@ -235,7 +235,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     function releaseOrderArbitrator(uint256 id, string memory reason) external {
         Order storage order = orders[id];
 
-        bool isArbitrator = hasRole(ARBITRATOR_ROLE, msg.sender);
+        bool isArbitrator = hasRole(ARBITRATOR_ROLE, _msgSender());
         bool isOrderExistant = order.seller != address(0);
 
         require(isOrderExistant, "Order does not exist");
@@ -260,7 +260,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
 	function verifyAndRegister(address signal, uint256 root, uint256 nullifierHash, uint256[8] calldata proof) public {
     require(nullifierHash != 0, "Nullifier hash cannot be 0");
 		// First, we make sure this person hasn't done this before
-		if (_addressToWorldcoinNullifierHash[msg.sender] != 0) revert AlreadyRegisteredNullifier();
+		if (_addressToWorldcoinNullifierHash[_msgSender()] != 0) revert AlreadyRegisteredNullifier();
 
 		// We should verify the proof before registering the user, but we continue to have issues with the verifier: https://dashboard.tenderly.co/tx/polygon-mumbai/0x3767fac3d7d0f8ec50894c9b04ca93497bbf525727b54b0690a7894820640b01
 
@@ -274,12 +274,12 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
 		// );
 
 		// We now record the user has done this, so they can't do it again (proof of uniqueness)
-		_addressToWorldcoinNullifierHash[msg.sender] = nullifierHash;
+		_addressToWorldcoinNullifierHash[_msgSender()] = nullifierHash;
 	}
     
 
     modifier onlyVerifiedHuman() {
-        require(_addressToWorldcoinNullifierHash[msg.sender] != 0, "Address not registered");
+        require(_addressToWorldcoinNullifierHash[_msgSender()] != 0, "Address not registered");
         _;
     }
 
@@ -296,7 +296,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
         uint256[] memory inputs,
         ICircuitValidator validator
     ) internal view override {
-        // check that the challenge input of the proof is equal to the msg.sender 
+        // check that the challenge input of the proof is equal to the _msgSender() 
         address addr = GenesisUtils.int256ToAddress(
             inputs[validator.getChallengeInputIndex()]
         );
