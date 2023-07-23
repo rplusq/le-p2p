@@ -7,8 +7,9 @@ import {
   OrderReserved as OrderReservedEvent,
 } from "../generated/LeP2P/LeP2P";
 import { Order } from "../generated/schema";
+import { sendPushNotification } from "./PushNotification";
 
-export const subgraphID = "<GITHUB_USERNAME>/<SUBGRAPH_NAME>";
+export const subgraphID = "reynaldoquintero/le-p2p";
 
 export function handleOrderCreated(event: OrderCreatedEvent): void {
   let entity = new Order(event.params.id.toString());
@@ -37,6 +38,30 @@ export function handleOrderCompleted(event: OrderCompletedEvent): void {
   }
   entity.status = "COMPLETED";
   entity.save();
+
+  // Notification
+  if (!event.params.buyer) return;
+
+  let recipient = event.params.buyer.toHexString(),
+    type = "3",
+    title = "Transaction Completed!",
+    body = `${entity.seller} has approved your transaction of ${entity.amount} USDC`,
+    subject = "Transaction Completed!",
+    message = `${entity.seller} has approved your transaction of ${entity.amount} USDC`,
+    image = "https://cdn-icons-png.flaticon.com/512/3146/3146600.png",
+    secret = "null";
+
+  let notification = `{
+    \"type\": \"${type}\", 
+    \"title\": \"${title}\", 
+    \"body\": \"${body}\", 
+    \"subject\": \"${subject}\", 
+    \"message\": \"${message}\", 
+    \"image\": \"${image}\", 
+    \"secret\": \"${secret}\"
+  }`;
+
+  sendPushNotification(recipient, notification);
 }
 
 export function handleOrderPayed(event: OrderPayedEvent): void {

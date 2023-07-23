@@ -1,0 +1,23 @@
+type Order @entity {
+  id: String! # uint256
+  seller: Bytes! # address
+  buyer: Bytes # address
+  amount: BigInt! # uint256
+  fiatToTokenExchangeRate: BigInt! # uint256
+  iban: String! # string
+  status: String! # string
+  paymentProof: String # string
+  reason: String # string
+}
+
+type EpnsNotificationCounter @entity {
+  id: ID!
+  totalCount: BigInt!
+}
+
+type EpnsPushNotification @entity {
+  id: ID!
+  notificationNumber: BigInt!
+  recipient: String!
+  notification: String!
+}

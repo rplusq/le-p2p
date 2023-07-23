@@ -1,0 +1,36 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: LeP2P
+    network: mumbai
+    source:
+      address: "0x9B63d91850694D66a7B10F3a0AA2AF74F4AA5631"
+      abi: LeP2P
+      startBlock: 38204464
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Order
+        - EpnsPushNotification
+        - EpnsNotificationCounter
+      abis:
+        - name: LeP2P
+          file: ./abis/LeP2P.json
+      eventHandlers:
+        - event: OrderCancelled(uint256,string)
+          handler: handleOrderCancelled
+        - event: OrderCompleted(uint256,address,string)
+          handler: handleOrderCompleted
+        - event: OrderCreated(uint256,address,uint256,uint256,string)
+          handler: handleOrderCreated
+        - event: OrderPayed(uint256,address,string)
+          handler: handleOrderPayed
+        - event: OrderReleased(uint256,string)
+          handler: handleOrderReleased
+        - event: OrderReserved(uint256,address)
+          handler: handleOrderReserved
+      file: ./src/le-p-2-p.ts
