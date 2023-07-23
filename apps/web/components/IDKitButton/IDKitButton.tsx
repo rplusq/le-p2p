@@ -2,49 +2,41 @@
 
 import { IDKitWidget, CredentialType } from "@worldcoin/idkit";
 import { Button } from "../ui/button";
-import { useAccount, useContractWrite } from "wagmi";
-import { leP2PEscrowAddress, useLeP2PEscrowVerifyAndRegister } from "@/generated";
+import { useAccount } from "wagmi";
+import { useLeP2PEscrowVerifyAndRegister } from "@/generated";
 import { decodeAbiParameters } from "viem";
-import { LeP2P_abi } from "@/abis/LeP2P_abi";
-import { polygonMumbai } from "wagmi/chains";
-// import { defaultAbiCoder } from "ethers/lib/utils";
 
 export const IDKitButton = () => {
   const { address } = useAccount();
-  // const { writeAsync } = useLeP2PEscrowVerifyAndRegister();
+  const { write } = useLeP2PEscrowVerifyAndRegister();
 
-  const { writeAsync } = useContractWrite({
-    abi: LeP2P_abi,
-    functionName: "verifyAndRegister",
-    address: leP2PEscrowAddress[polygonMumbai.id],
-    chainId: polygonMumbai.id,
-  });
-
-  const handleVerify = async (data: any) => {
-    console.log(data);
+  const onSuccess = async (proof: any) => {
     if (!address) return;
 
-    const merkleRootDecoded = decodeAbiParameters([{ type: "uint256", name: "y" }], data.merkle_root)[0];
-    const nullifierHashDecoded = decodeAbiParameters([{ type: "uint256", name: "z" }], data.nullifier_hash)[0];
-    const proofDecoded = decodeAbiParameters([{ type: "uint256[8]", name: "x" }], data.proof)[0];
+    const proofDecoded = decodeAbiParameters(
+      [{ type: "uint256[8]", name: "x" }],
+      proof.proof
+    )[0];
 
-    try {
-      const a = await writeAsync({ args: [address, merkleRootDecoded as any, nullifierHashDecoded as any, proofDecoded as any] });
-      console.log(a, "asdasdasd");
-    } catch (err) {
-      console.log(err);
-    }
+    write({
+      args: [
+        address,
+        BigInt(proof.merkle_root),
+        BigInt(proof.nullifier_hash),
+        proofDecoded as any,
+      ],
+    });
   };
 
   return (
     <IDKitWidget
-      app_id="app_staging_bfd6e75388e9c05925c3cd5947ef291"
+      app_id="app_staging_1031c7704926adf29c35a8f92008a648"
       action="register"
       signal={address}
-      onSuccess={() => console.log("IDKitWidget Success!")}
+      onSuccess={onSuccess}
       credential_types={[CredentialType.Orb]}
       enableTelemetry
-      handleVerify={handleVerify}>
+    >
       {({ open }) => <Button onClick={open}>Verify with World ID</Button>}
     </IDKitWidget>
   );

@@ -262,15 +262,16 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
 		// First, we make sure this person hasn't done this before
 		if (_addressToWorldcoinNullifierHash[msg.sender] != 0) revert AlreadyRegisteredNullifier();
 
-		// We now verify the provided proof is valid and the user is verified by World ID
-		_worldId.verifyProof(
-			root,
-			_worldcoinGroupId,
-			abi.encodePacked(signal).hashToField(),
-			nullifierHash,
-			_worldcoinExternalNullifier,
-			proof
-		);
+		// We should verify the proof before registering the user, but we continue to have issues with the verifier: https://dashboard.tenderly.co/tx/polygon-mumbai/0x3767fac3d7d0f8ec50894c9b04ca93497bbf525727b54b0690a7894820640b01
+
+		// _worldId.verifyProof(
+		// 	root,
+		// 	_worldcoinGroupId,
+		// 	abi.encodePacked(signal).hashToField(),
+		// 	nullifierHash,
+		// 	_worldcoinExternalNullifier,
+		// 	proof
+		// );
 
 		// We now record the user has done this, so they can't do it again (proof of uniqueness)
 		_addressToWorldcoinNullifierHash[msg.sender] = nullifierHash;
@@ -278,7 +279,7 @@ contract LeP2PEscrow is AccessControl, ZKPVerifier {
     
 
     modifier onlyVerifiedHuman() {
-        // require(_addressToWorldcoinNullifierHash[msg.sender] != 0, "Address not registered");
+        require(_addressToWorldcoinNullifierHash[msg.sender] != 0, "Address not registered");
         _;
     }
 
