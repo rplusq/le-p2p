@@ -7,17 +7,43 @@ import { useAccount, useBalance, useConnect } from "wagmi";
 import millify from "millify";
 import { useEffect, useState } from "react";
 import { usdcMockAddress } from "@/generated";
+import * as PushAPI from "@pushprotocol/restapi";
 import { polygonMumbai } from "wagmi/chains";
+import BellIcon from "@mui/icons-material/NotificationsNone";
+import { useToast } from "../ui/use-toast";
 
 export default function AppHeader() {
   const { address } = useAccount();
   const { connectors } = useConnect();
   const usdcBalance = useBalance({ address, token: usdcMockAddress[polygonMumbai.id] });
+  const { toast } = useToast();
   const [connectorsReady, setConnectorsReady] = useState(false);
 
   useEffect(() => {
     setConnectorsReady(connectors.every((connector) => connector.ready));
   }, [connectors]);
+
+  const handleOptIn = async () => {
+    await PushAPI.channels.subscribe({
+      signer: await (window as any).ethereum.request({
+        method: "eth_requestAccounts",
+      })[0],
+      channelAddress: `eip155:${polygonMumbai.id}:0x7fc524F99e8b3d91dA6E387A3cF2898885e2A2Ee`,
+      userAddress: `eip155:${polygonMumbai.id}:${address}`,
+      onSuccess: () => {
+        toast({
+          variant: "default",
+          title: "Opt-in success",
+          description: "You will now receive notifications for this channel.",
+        });
+      },
+      onError: (err) => {
+        console.log(err);
+        console.error("opt in error");
+      },
+      env: "staging" as PushAPI.Env,
+    });
+  };
 
   return (
     connectorsReady && (
@@ -43,7 +69,13 @@ export default function AppHeader() {
           </svg>
           <span className="font-bold ml-2">{millify(+(usdcBalance.data?.formatted ?? 0))}</span>
         </Button>
-        <Web3Button />
+        <div>
+          <Button variant="outline" className="mr-3" onClick={handleOptIn}>
+            <BellIcon className="h-4 w-4" />
+            Push Opt-in
+          </Button>
+          <Web3Button />
+        </div>
       </StyledAppHeader>
     )
   );

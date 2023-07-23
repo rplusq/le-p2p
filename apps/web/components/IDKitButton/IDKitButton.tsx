@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { useAccount, useWaitForTransaction } from "wagmi";
 import { useLeP2PEscrowVerifyAndRegister } from "@/generated";
 import { decodeAbiParameters } from "viem";
+import { Verified } from "lucide-react";
 
 export const IDKitButton = ({ refetch }: { refetch: any }) => {
   const { address } = useAccount();
@@ -20,18 +21,10 @@ export const IDKitButton = ({ refetch }: { refetch: any }) => {
   const onSuccess = async (proof: any) => {
     if (!address) return;
 
-    const proofDecoded = decodeAbiParameters(
-      [{ type: "uint256[8]", name: "x" }],
-      proof.proof
-    )[0];
+    const proofDecoded = decodeAbiParameters([{ type: "uint256[8]", name: "x" }], proof.proof)[0];
 
     verifyAndRegisterCall.write({
-      args: [
-        address,
-        BigInt(proof.merkle_root),
-        BigInt(proof.nullifier_hash),
-        proofDecoded as any,
-      ],
+      args: [address, BigInt(proof.merkle_root), BigInt(proof.nullifier_hash), proofDecoded as any],
     });
   };
 
@@ -42,9 +35,12 @@ export const IDKitButton = ({ refetch }: { refetch: any }) => {
       signal={address}
       onSuccess={onSuccess}
       credential_types={[CredentialType.Orb]}
-      enableTelemetry
-    >
-      {({ open }) => <Button onClick={open}>Verify with World ID</Button>}
+      enableTelemetry>
+      {({ open }) => (
+        <Button onClick={open} className="w-full">
+          <Verified className="mr-2" /> <span>Verify with World ID</span>
+        </Button>
+      )}
     </IDKitWidget>
   );
 };
