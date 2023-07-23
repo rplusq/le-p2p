@@ -39,6 +39,11 @@ We also store the payment through Web3 Storage, tapping Filecoin and IPFS
 
 [LeP2PEscrow in Polygon Mumbai](https://mumbai.polygonscan.com/address/0xd9a2603ad0be058a5e95172ba542d68e5ee1eb5e)
 
+## Our Subgraphs
+
+[Hosted Service](https://api.thegraph.com/subgraphs/name/reynaldoquintero/le-p2p)
+[Studio](https://api.studio.thegraph.com/query/50104/le-p2p/v0.0.8)
+
 ## Collaborators
 
 Born in ETH Global Paris 2023 🥐 Hackers: @fonstack @ReynaldoQuintero @rplusq
