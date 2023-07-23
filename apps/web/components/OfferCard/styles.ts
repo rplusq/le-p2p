@@ -6,6 +6,8 @@ export const StyledOfferCard = styled.div<{ disabled: boolean; noActions: boolea
     overflow: hidden;
 
     .offer-card {
+      position: relative;
+
       ${!ownOffer &&
       css`
         cursor: pointer;
@@ -23,6 +25,14 @@ export const StyledOfferCard = styled.div<{ disabled: boolean; noActions: boolea
           background-color: transparent;
         }
       `}
+
+      .xmtp-badge {
+        display: flex;
+        gap: 5px;
+        position: absolute;
+        right: 15px;
+        bottom: 15px;
+      }
     }
 
     ${disabled &&
